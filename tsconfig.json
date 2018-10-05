@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "removeComments": true,
+    "watch": false,
+    "sourceMap": false,
+    "outDir": "lib/",
+    "lib": [ "dom", "es5", "es6" ],
+    "alwaysStrict": true
+  },
+  "files": [
+    "src/lightbox.ts"
+  ]
+}
