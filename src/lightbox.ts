@@ -381,7 +381,7 @@ module Carbon {
       this.cloneEl.removeAttribute('style');
       this.cloneEl.style.width = '100%';
       this.cloneEl.style.userSelect = 'none';
-      this.cloneEl.style.objectFit = 'contain';
+      this.cloneEl.style.objectFit = 'scale-down';
       this.cloneEl.draggable = false;
       this.cloneEl.style.pointerEvents = 'none';
     }
@@ -725,6 +725,10 @@ module Carbon {
       
       if (this.width < this.viewport.width) {
         this.offset.x = (this.viewport.width - this.width) / 2;
+      }
+
+      if (this.height < this.viewport.height) {
+        this.offset.y = (this.viewport.height - this.height) / 2;
       }
 
 			this.element.style.transformOrigin = '0 0'; 
