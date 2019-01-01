@@ -8,7 +8,7 @@ module Carbon {
   export class Lightbox {
     static instance: Lightbox;
 
-    static get() : Lightbox {
+    static get(): Lightbox {
       // Lazily create an instance the first time it's used
       return Lightbox.instance || (Lightbox.instance = new Lightbox());
     }
@@ -20,9 +20,7 @@ module Carbon {
     viewport: Viewport;
     padding = 25;
 
-    url: string;
-    fullHeight: number;
-    fullWidth: number;
+    item: LightboxItem;
     scale: number;
     origin: ClientRect;
         
@@ -31,11 +29,10 @@ module Carbon {
     sourceElement: HTMLElement;
     cloneEl: HTMLElement;
     
-    queuedOpen = false;
     visible = false;
     animating = false;
+    options: any;
     
-    timestamp: number;
     pannable: Pannable;
         
     animationDuration = 200;
@@ -43,7 +40,10 @@ module Carbon {
 
     easing = 'cubic-bezier(.175,.885,.32,1)';
 
-    constructor() {
+    items: LightboxItem[];
+    didPan = false;
+
+    constructor(options = null) {
       this.element = this.createElement();
 
       this.viewport = new Viewport(this.element.querySelector('.viewport'));
@@ -61,6 +61,8 @@ module Carbon {
           this.zoomOut();
         }
       });
+
+      this.options = options || { };
       
       this.viewport.element.addEventListener('click', this.onTap.bind(this), true);
 
@@ -72,7 +74,7 @@ module Carbon {
     open(sourceElement: HTMLElement) {
       this.scrollTop = document.body.scrollTop;
 
-      if(this.visible || this.queuedOpen) return;
+      if(this.visible) return;
 
       this.sourceElement = sourceElement;
 
@@ -82,19 +84,21 @@ module Carbon {
 
       this.scale = 0;
 
-      var data = sourceElement.dataset;
+      let data = sourceElement.dataset;
 
-      this.url = data['zoomSrc'];
-
+      this.item = new LightboxItem();
+      
+      this.item.url = data['zoomSrc'];
+      
       if (data['zoomSize']) {
-        var parts = data['zoomSize'].split('x');
+        let parts = data['zoomSize'].split('x');
         
-        this.fullWidth = parseInt(parts[0], 10);
-        this.fullHeight = parseInt(parts[1], 10);
+        this.item.width = parseInt(parts[0], 10);
+        this.item.height = parseInt(parts[1], 10);
       }
       else {
-        this.fullWidth  = parseInt(data['zoomWidth'], 10);
-        this.fullHeight = parseInt(data['zoomHeight'], 10);
+        this.item.width  = parseInt(data['zoomWidth'], 10);
+        this.item.height = parseInt(data['zoomHeight'], 10);
       }
 
       this.createClone();
@@ -106,7 +110,6 @@ module Carbon {
       this.element.style.visibility = 'visible';
       this.element.style.cursor = 'zoom-out';
 
-      _.trigger(this.element, 'lightbox:open', { });            
       this.pannable = new Carbon.Pannable(this.cloneEl, this.viewport);
 
       this.sourceElement.style.visibility = 'hidden';
@@ -117,11 +120,25 @@ module Carbon {
     }
 
     onPanEnd(e) {
-      this.cloneEl.style.transition = null;
-      
       if (this.pannable.enabled || this.pannable.dragging) return;
 
-      if (Math.abs(e.deltaY) > 50) {
+      this.didPan = true;
+
+      if (this.panDirection == 4 || this.panDirection == 2) {
+      
+
+        this.viewport.element.style.transform = 'translateY(0px)';
+
+        return;
+      }
+
+      this.cloneEl.style.transition = null;
+
+      this.panDirection = null;
+
+      console.log('pan end', e.deltaY);
+
+      if (Math.abs(e.deltaY) > 150) {
 
         this.animating = true;
 
@@ -135,36 +152,89 @@ module Carbon {
 
       }
       else {
+
+        this.element.style.setProperty('--background-opacity', '1');
+
+        this.viewport.element.style.transition = `transform 200ms ease-in`;
+
+        this.viewport.element.style.transform = `translateY(0px)`;
+
         this.element.style.transform = null;
       }
     }
 
     onPanStart(e) {
       if (this.pannable.enabled) return;
-    
+          
+      // console.log('pan start', e.offsetDirection); 
+
+      // 16 = down
+      // 8 = up
+      // 4 = right
+      // 2 = left
+
+      this.panDirection = e.offsetDirection;
+
       this.fitObject();
     }
+
 
     onPanMove(e) {
       if (this.pannable.enabled) return;
                 
+      // direction....
+
       this.viewport.element.style.transition = '';
       
-      this.viewport.element.style.transform = `translateY(${e.deltaY}px`;
+      let transform = '';
+
+      if (this.panDirection == 16 || this.panDirection == 8) {
+        var backgroundOpacity = 1 - Math.abs(e.deltaY / (this.height / 2));
+
+
+        this.element.style.setProperty('--background-opacity', backgroundOpacity.toString());
+
+      }
+
+      switch (this.panDirection) {
+        case 16:
+        case 8: transform = `translateY(${e.deltaY}px)`; break;
+        case 4:
+        case 2: transform = `translateX(${e.deltaX}px)`; break;
+      }
+
+      this.viewport.element.style.transform = transform;
+    }
+
+    get isPannable() {
+      return this.cloneEl.classList.contains('pannable');
     }
 
     onTap(e) {
-      if (this.animating || this.pannable.dragging) 
-      {
+
+      if (this.didPan) {
+        this.didPan = false;
+
+        return;
+      }
+      console.log('tap', this.pannable.dragging);
+
+      if (this.animating || this.pannable.dragging || this.panDirection)  {
         return;
       }
 
-      if (!this.cloneEl.classList.contains('pannable')) {
+      let maxScale = this.item.width / this.fittedBox.width;
+
+      let canPan = this.isPannable && maxScale > 1;
+      
+      if (!canPan) {
         this.zoomOut();
 
         return;
       }
-    
+
+
+      
       if (this.pannable.enabled) {
         this.pannable.content._scale = 1;        
         this.cloneEl.style.transition = `transform 250ms ${this.easing}`;
@@ -181,7 +251,7 @@ module Carbon {
 
       this.fitObject();
 
-      this.calculateTargetPosition({ width: this.fullWidth, height: this.fullHeight });
+      this.calculateTargetPosition(this.item);
 
       let l = e.offsetX - this.fittedBox.left + 25;
       let t = e.offsetY - this.fittedBox.top + 25;
@@ -208,7 +278,7 @@ module Carbon {
         this.cloneEl.style.transition = `transform 250ms ${this.easing}`;
 
 
-        this.pannable.content._scale = this.fullWidth / this.fittedBox.width;
+        this.pannable.content._scale = this.item.width / this.fittedBox.width;
 
         this.pannable.viewport.centerAt(anchor);
 
@@ -254,7 +324,7 @@ module Carbon {
       
       this.viewport.element.appendChild(cloneEl);
 
-      this.calculateTargetPosition({ width: this.fullWidth, height: this.fullHeight });
+      this.calculateTargetPosition(this.item);
 
       this.cloneEl = cloneEl;
     }
@@ -271,7 +341,7 @@ module Carbon {
         transformOrigin: 'left top'
       });
 
-      this.calculateTargetPosition({ width: this.fullWidth, height: this.fullHeight });
+      this.calculateTargetPosition(this.item);
 
       // Scale the cloned element
       // this.cloneEl.style.transition = 'none';       
@@ -312,7 +382,7 @@ module Carbon {
       if (!this.sourceElement) return;
 
       if (this.animating) {
-        this.calculateTargetPosition({ width: this.fullWidth, height: this.fullHeight });
+        this.calculateTargetPosition(this.item);
 
         let elapsed = new Date() - this.animationStart;
 
@@ -326,9 +396,15 @@ module Carbon {
     }
 
     zoomIn(duration = '0.25s') {
+
+      
+      this.element.style.setProperty('--background-opacity', '1');
+
       this.viewport.element.style.transform = null;
 
       let animated = new Deferred<boolean>();
+
+      this.element.classList.add('opening');
 
       this.state = 'opening';
       
@@ -340,12 +416,10 @@ module Carbon {
       let otherImg : HTMLImageElement = this.cloneEl.tagName == 'IMG' 
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
-
         
       if (otherImg) {
-        let img = new Image();
 
-        img.onload = () => {
+        this.item.load().then(() => {
           animated.promise.then(() => {          
             // otherImg.removeAttribute('srcset');
 
@@ -357,21 +431,20 @@ module Carbon {
                  return;
               }
 
-              otherImg.srcset = this.url + ' 1x';
+              otherImg.srcset = this.item.url + ' 1x';
 
               this.fitObject();
             }, 1);
 
           });
-        };
-
-        img.src = this.url;
+        });
       }
       
       setTimeout(() => {
-        
         animated.resolve(true);
         
+        this.element.classList.remove('opening');
+      
       }, 251);
 
       return animated;
@@ -435,8 +508,6 @@ module Carbon {
 
       this.element.style.cursor = null;
       this.element.classList.add('closing');
-
-      this.timestamp = null;
       
       this.visible = false;
 
@@ -446,8 +517,6 @@ module Carbon {
 
       this.element.style.background = 'transparent';
       
-      _.trigger(this.element, 'lightbox:close');
-
       this.cloneEl.style.transition = `transform ${this.animationDuration}ms ease-out`;
       this.cloneEl.style.transform = `translate(${this.origin.left}px,${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
 
@@ -473,8 +542,6 @@ module Carbon {
     close() {
       this.element.classList.add('closed');
       this.element.classList.remove('open');
-     
-      _.trigger(this.element, 'lightbox:box', { });
     }
 
     createElement() {
@@ -493,6 +560,18 @@ module Carbon {
         userSelect : 'none'
       });
 
+      let backgroundEl = document.createElement('div');
+
+      backgroundEl.classList.add('background');
+
+      setStyle(backgroundEl, { 
+        position : 'absolute',
+        width    : '100%',
+        height   : '100%',
+        top      : '0px',
+        left     : '0px'
+      });
+
       let viewportEl = document.createElement('div');
 
       viewportEl.className = 'viewport';
@@ -500,14 +579,18 @@ module Carbon {
       setStyle(viewportEl, { 
         display        : 'flex',
         overflow       : 'hidden',
+        position       : 'absolute',
         width          : '100%',
         height         : '100%',
+        top            : '0px',
+        left           : '0px',
         padding        : 25 + 'px',
         boxSizing      : 'border-box',
         justifyContent : 'center',
         userSelect     : 'none'
       });
 
+      element.appendChild(backgroundEl);
       element.appendChild(viewportEl);
 
       document.body.appendChild(element);
@@ -651,7 +734,37 @@ module Carbon {
       });
     }
 	}
-	
+  
+  class LightboxItem {
+    url: string;
+    width: number;
+    height: number;
+    image?: HTMLImageElement;
+
+    constructor() {
+
+    }
+
+    load() {
+
+      console.log('loading:', this.url);
+
+      let deferred = new Deferred();
+
+      this.image = new Image();
+
+      this.image.onload = () => {
+        // otherImg.removeAttribute('srcset');
+
+        deferred.resolve();
+
+      };
+
+      this.image.src = this.url;
+
+      return deferred.promise;
+    }
+  }
 	class ViewportContent {
     element: HTMLElement;
     viewport: Viewport;
@@ -855,7 +968,6 @@ module Carbon {
     }
   }
   
-
   class Deferred<T> {
     private _resolve: Function;
     private _reject: Function;
