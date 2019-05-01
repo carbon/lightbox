@@ -519,8 +519,12 @@ module Carbon {
       this.sourceElement.style.visibility = 'visible';
 
       this.animating = false;
-      this.boxEl.remove();
-      this.boxEl = null;
+
+      if (this.boxEl) {
+        this.boxEl.remove();
+        this.boxEl = null;
+      }
+
       this.cloneEl = null;
 
       this.cloneEl.remove();
