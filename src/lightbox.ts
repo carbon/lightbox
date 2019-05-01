@@ -41,6 +41,7 @@ module Carbon {
     easing = 'cubic-bezier(.175,.885,.32,1)';
 
     items: LightboxItem[];
+    boxEl: HTMLElement;
     didPan = false;
 
     constructor(options = null) {
@@ -49,6 +50,7 @@ module Carbon {
       this.viewport = new Viewport(this.element.querySelector('.viewport'));
       
       window.addEventListener('scroll', this.onScroll.bind(this), false);
+      window.addEventListener('resize', this.onResize.bind(this), false);
 
       document.addEventListener('keyup', e => {
         if (e.keyCode !== 27) return; // escape        
@@ -124,10 +126,11 @@ module Carbon {
 
       this.didPan = true;
 
-      if (this.panDirection == 4 || this.panDirection == 2) {
-      
+      console.log('PAN:' + e.panDirection);
 
-        this.viewport.element.style.transform = 'translateY(0px)';
+      if (this.panDirection == 4 || this.panDirection == 2) {
+    
+        this.viewport.element.style.transform = null; //'translateY(0px)';
 
         return;
       }
@@ -219,7 +222,7 @@ module Carbon {
       }
       console.log('tap', this.pannable.dragging);
 
-      if (this.animating || this.pannable.dragging || this.panDirection)  {
+      if (this.animating || this.pannable.dragging)  {
         return;
       }
 
@@ -234,7 +237,6 @@ module Carbon {
       }
 
 
-      
       if (this.pannable.enabled) {
         this.pannable.content._scale = 1;        
         this.cloneEl.style.transition = `transform 250ms ${this.easing}`;
@@ -277,18 +279,16 @@ module Carbon {
       setTimeout(() => {
         this.cloneEl.style.transition = `transform 250ms ${this.easing}`;
 
-
         this.pannable.content._scale = this.item.width / this.fittedBox.width;
 
         this.pannable.viewport.centerAt(anchor);
 
       }, 15);
-  
     }
 
     createClone() {
       let a = this.element.querySelector('.clone');
-      
+
       a && a.remove();
       
       let cloneEl = this.sourceElement.cloneNode(true) as HTMLElement;
@@ -314,6 +314,8 @@ module Carbon {
         transformOrigin: 'left top',
         transform: `translate(${this.origin.left}px, ${this.origin.top}px) scale(1)`
       });    
+
+     
 
       cloneEl.draggable = false;
       
@@ -375,6 +377,7 @@ module Carbon {
         this.fittedBox.left = elementSize.left;
       }
 
+
       this.scale = this.fittedBox.width / this.origin.width;
     }
 
@@ -396,8 +399,6 @@ module Carbon {
     }
 
     zoomIn(duration = '0.25s') {
-
-      
       this.element.style.setProperty('--background-opacity', '1');
 
       this.viewport.element.style.transform = null;
@@ -450,13 +451,39 @@ module Carbon {
       return animated;
     }
 
+    onResize() {
+
+     
+      this.fitBox(); 
+
+
+    }
+
+    fitBox() {
+
+      if (!this.boxEl) {
+        this.addBox();
+      }
+
+      this.calculateTargetPosition(this.item);
+
+      // Scale the cloned element
+      // this.cloneEl.style.transition = 'none';       
+      this.boxEl.style.transform = `translate(${this.fittedBox.left}px,${this.fittedBox.top}px) scale(${this.scale})`;
+
+    }
+
     fitObject() {
+   
+
       this.cloneEl.removeAttribute('style');
       this.cloneEl.style.width = '100%';
       this.cloneEl.style.userSelect = 'none';
       this.cloneEl.style.objectFit = 'scale-down';
       this.cloneEl.draggable = false;
       this.cloneEl.style.pointerEvents = 'none';
+
+      this.fitBox();
     }
 
     private fit(element: Size, box: Size) : Size {
@@ -492,6 +519,10 @@ module Carbon {
       this.sourceElement.style.visibility = 'visible';
 
       this.animating = false;
+      this.boxEl.remove();
+      this.boxEl = null;
+      this.cloneEl = null;
+
       this.cloneEl.remove();
     }
     
@@ -590,12 +621,36 @@ module Carbon {
         userSelect     : 'none'
       });
 
+
       element.appendChild(backgroundEl);
       element.appendChild(viewportEl);
 
+
+
       document.body.appendChild(element);
 
+
+
       return element;
+    }
+
+    addBox() {
+
+      this.boxEl = document.createElement('div');
+      
+      this.boxEl.classList.add('box');
+    
+      setStyle(this.boxEl, {
+        display         : 'block',
+        position        : 'absolute',
+        top             : '0',
+        left            : '0',
+        width           : this.origin.width  + 'px',
+        height          :  this.origin.height + 'px',
+        transformOrigin : 'left top'
+      });
+
+      this.viewport.element.appendChild(this.boxEl);
     }
 
   }  
