@@ -525,9 +525,10 @@ module Carbon {
         this.boxEl = null;
       }
 
-      this.cloneEl = null;
-
-      this.cloneEl.remove();
+      if (this.cloneEl) {
+        this.cloneEl = null;
+        this.cloneEl.remove();
+      }
     }
     
     zoomOut() {
