@@ -74,6 +74,11 @@ module Carbon {
     }
 
     open(sourceElement: HTMLElement) {
+      
+      if (this.animating) {
+        return;
+      }
+
       this.scrollTop = document.body.scrollTop;
 
       if(this.visible) return;
@@ -580,7 +585,7 @@ module Carbon {
       if (this.animation) {
         this.animation.pause();
       }
-      
+
       this.animation = anime({
         targets: this.cloneEl,
         duration: this.animationDuration,
