@@ -80,8 +80,6 @@ module Carbon {
 
       this.sourceElement = sourceElement;
 
-      if (this.animating) return;
-
       this.origin = this.sourceElement.getBoundingClientRect();
 
       this.scale = 0;
@@ -222,7 +220,7 @@ module Carbon {
       }
       console.log('tap', this.pannable.dragging);
 
-      if (this.animating || this.pannable.dragging)  {
+      if (this.pannable.dragging)  {
         return;
       }
 
@@ -240,7 +238,7 @@ module Carbon {
       if (this.pannable.enabled) {
         this.pannable.content._scale = 1;        
         this.cloneEl.style.transition = `transform 250ms ${this.easing}`;
-        this.cloneEl.style.transform = `scale(1) translate(${this.fittedBox.left}px, ${this.fittedBox.top}px)`;
+        this.cloneEl.style.transform = `scale(1) translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px)`;
         
         this.pannable.disable();
   
@@ -274,7 +272,7 @@ module Carbon {
       this.cloneEl.style.left = '0';
       this.cloneEl.style.transition = null;
 
-      this.cloneEl.style.transform = `scale(1) translate(${this.fittedBox.left}px, ${this.fittedBox.top}px)`;
+      this.cloneEl.style.transform = `scale(1) translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px)`;
       
       setTimeout(() => {
         this.cloneEl.style.transition = `transform 250ms ${this.easing}`;
@@ -312,10 +310,9 @@ module Carbon {
         width: this.origin.width  + 'px',
         height:  this.origin.height + 'px',
         transformOrigin: 'left top',
-        transform: `translate(${this.origin.left}px, ${this.origin.top}px) scale(1)`
+        transform: `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(1)`
       });    
 
-     
 
       cloneEl.draggable = false;
       
@@ -347,7 +344,7 @@ module Carbon {
 
       // Scale the cloned element
       // this.cloneEl.style.transition = 'none';       
-      this.cloneEl.style.transform = `translate(${this.fittedBox.left}px,${this.fittedBox.top}px) scale(${this.scale})`;
+      this.cloneEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
 
     }
 
@@ -389,8 +386,11 @@ module Carbon {
 
         let elapsed = new Date() - this.animationStart;
 
+       
+        this.animation.pause();
+      
         this.cloneEl.style.transition = `transform ${this.animationDuration - elapsed}ms ease-out`;
-        this.cloneEl.style.transform = `translate(${this.origin.left}px,${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
+        this.cloneEl.style.transform = `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
       }
       
       if (this.visible && Math.abs(this.scrollTop - window.scrollY) > 15) {
@@ -398,7 +398,7 @@ module Carbon {
       }
     }
 
-    zoomIn(duration = '0.25s') {
+    zoomIn(duration = 200) {
       this.element.style.setProperty('--background-opacity', '1');
 
       this.viewport.element.style.transform = null;
@@ -411,9 +411,24 @@ module Carbon {
       
       // this.cloneEl.addEventListener('transitionend', this.zoomInCompleted, false);
 
-      this.cloneEl.style.transition = `transform ${duration} ${this.easing}`;       
-      this.cloneEl.style.transform = `translate(${this.fittedBox.left}px,${this.fittedBox.top}px) scale(${this.scale})`;
+      // this.cloneEl.style.transition = `transform ${duration} ${this.easing}`;       
+      // this.cloneEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
 
+
+      if (this.animation) {
+        this.animation.pause();
+      }
+
+      this.animation = anime({
+        targets: this.cloneEl,
+        duration: duration,
+        translateX: this.fittedBox.left,
+        translateY: this.fittedBox.top,
+        scale: this.scale,
+        easing: 'easeOutQuad'
+      });
+
+      
       let otherImg : HTMLImageElement = this.cloneEl.tagName == 'IMG' 
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
@@ -469,7 +484,7 @@ module Carbon {
 
       // Scale the cloned element
       // this.cloneEl.style.transition = 'none';       
-      this.boxEl.style.transform = `translate(${this.fittedBox.left}px,${this.fittedBox.top}px) scale(${this.scale})`;
+      this.boxEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
 
     }
 
@@ -526,8 +541,8 @@ module Carbon {
       }
 
       if (this.cloneEl) {
-        this.cloneEl = null;
         this.cloneEl.remove();
+        this.cloneEl = null;
       }
     }
     
@@ -553,8 +568,27 @@ module Carbon {
 
       this.element.style.background = 'transparent';
       
-      this.cloneEl.style.transition = `transform ${this.animationDuration}ms ease-out`;
-      this.cloneEl.style.transform = `translate(${this.origin.left}px,${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
+      // this.cloneEl.style.transition = `transform ${this.animationDuration}ms ease-out`;
+      // this.cloneEl.style.transform = `translate(${this.origin.left}px,${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
+
+
+
+      /// this.cloneEl.style.transition = `transform ${duration} ${this.easing}`;       
+      // this.cloneEl.style.transform = `translate(${this.fittedBox.left}px,${this.fittedBox.top}px) scale(${this.scale})`;
+
+
+      if (this.animation) {
+        this.animation.pause();
+      }
+      
+      this.animation = anime({
+        targets: this.cloneEl,
+        duration: this.animationDuration,
+        scale: this.origin.width / this.cloneEl.clientWidth,
+        translateX: this.origin.left,
+        translateY: this.origin.top,
+        easing: 'easeOutQuad'
+      });
 
       this.animationStart = new Date();
 
@@ -905,7 +939,7 @@ module Carbon {
       }
 
 			this.element.style.transformOrigin = '0 0'; 
-			this.element.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale})`;
+			this.element.style.transform = `translateX(${this.x}px) translateY(${this.y}px) scale(${this.scale})`;
     }
   }
 
