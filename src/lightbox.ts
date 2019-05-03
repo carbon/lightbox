@@ -43,6 +43,7 @@ module Carbon {
     items: LightboxItem[];
     boxEl: HTMLElement;
     didPan = false;
+    animation: any;
 
     constructor(options = null) {
       this.element = this.createElement();
@@ -199,7 +200,6 @@ module Carbon {
 
 
         this.element.style.setProperty('--background-opacity', backgroundOpacity.toString());
-
       }
 
       switch (this.panDirection) {
@@ -218,11 +218,16 @@ module Carbon {
 
     onTap(e) {
 
+      if (this.animating) {
+        return;
+      }
+
       if (this.didPan) {
         this.didPan = false;
 
         return;
       }
+
       console.log('tap', this.pannable.dragging);
 
       if (this.pannable.dragging)  {
@@ -238,7 +243,6 @@ module Carbon {
 
         return;
       }
-
 
       if (this.pannable.enabled) {
         this.pannable.content._scale = 1;        
@@ -266,7 +270,6 @@ module Carbon {
         y: (t / this.fittedBox.height)  
       };
       
-
       this.pannable.enable();
 
       this.cloneEl.style.objectFit = null;
@@ -316,8 +319,7 @@ module Carbon {
         height:  this.origin.height + 'px',
         transformOrigin: 'left top',
         transform: `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(1)`
-      });    
-
+      });
 
       cloneEl.draggable = false;
       
@@ -334,6 +336,8 @@ module Carbon {
     }
 
     resetCloneStyle() {
+      this.calculateTargetPosition(this.item);
+
       setStyle(this.cloneEl, {
         display: 'block',
         position: 'absolute',
@@ -342,15 +346,10 @@ module Carbon {
         pointerEvents: 'none',
         width: this.origin.width  + 'px',
         height:  this.origin.height + 'px',
-        transformOrigin: 'left top'
+        transformOrigin: 'left top',
+        transition: null,
+        transform: `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`
       });
-
-      this.calculateTargetPosition(this.item);
-
-      // Scale the cloned element
-      // this.cloneEl.style.transition = 'none';       
-      this.cloneEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
-
     }
 
     calculateTargetPosition(elementSize: Size) {
@@ -389,13 +388,16 @@ module Carbon {
       if (this.animating) {
         this.calculateTargetPosition(this.item);
 
-        let elapsed = new Date() - this.animationStart;
 
-       
+        let remaining = this.animation.duration - this.animation.currentTime;
+
+
         this.animation.pause();
-      
-        this.cloneEl.style.transition = `transform ${this.animationDuration - elapsed}ms ease-out`;
+
+        this.cloneEl.style.transition = `transform ${remaining}ms ease-out`;
         this.cloneEl.style.transform = `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
+      
+        return;
       }
       
       if (this.visible && Math.abs(this.scrollTop - window.scrollY) > 15) {
@@ -420,9 +422,9 @@ module Carbon {
       // this.cloneEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
 
 
-      if (this.animation) {
-        this.animation.pause();
-      }
+      this.animation && this.animation.pause();
+      
+      this.animating = true;      
 
       this.animation = anime({
         targets: this.cloneEl,
@@ -462,6 +464,8 @@ module Carbon {
       }
       
       setTimeout(() => {
+        this.animating = false;
+
         animated.resolve(true);
         
         this.element.classList.remove('opening');
@@ -472,11 +476,7 @@ module Carbon {
     }
 
     onResize() {
-
-     
       this.fitBox(); 
-
-
     }
 
     fitBox() {
@@ -494,8 +494,6 @@ module Carbon {
     }
 
     fitObject() {
-   
-
       this.cloneEl.removeAttribute('style');
       this.cloneEl.style.width = '100%';
       this.cloneEl.style.userSelect = 'none';
@@ -567,7 +565,6 @@ module Carbon {
       
       this.visible = false;
 
-      this.calculateTargetPosition(this.cloneEl.getBoundingClientRect());
 
       this.animating = true;
 
@@ -586,14 +583,7 @@ module Carbon {
         this.animation.pause();
       }
 
-      this.animation = anime({
-        targets: this.cloneEl,
-        duration: this.animationDuration,
-        scale: this.origin.width / this.cloneEl.clientWidth,
-        translateX: this.origin.left,
-        translateY: this.origin.top,
-        easing: 'easeOutQuad'
-      });
+      this.animateBackToOrigin(this.animationDuration);
 
       this.animationStart = new Date();
 
@@ -604,6 +594,22 @@ module Carbon {
         this.onClosed();
       }, this.animationDuration + 3);
 
+    }
+
+
+    animateBackToOrigin(duration) {
+      this.animation && this.animation.pause();
+
+      this.calculateTargetPosition(this.cloneEl.getBoundingClientRect());
+
+      this.animation = anime({
+        targets: this.cloneEl,
+        duration: duration,
+        scale: this.origin.width / this.cloneEl.clientWidth,
+        translateX: this.origin.left,
+        translateY: this.origin.top,
+        easing: 'easeOutQuad'
+      });
     }
 
     get width() {
