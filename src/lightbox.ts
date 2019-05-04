@@ -44,6 +44,7 @@ module Carbon {
     boxEl: HTMLElement;
     didPan = false;
     animation: any;
+    panDirection: number;
 
     constructor(options = null) {
       this.element = this.createElement();
@@ -76,13 +77,9 @@ module Carbon {
 
     open(sourceElement: HTMLElement) {
       
-      if (this.animating) {
+      if (this.animating || this.visible) {
         return;
       }
-
-      this.scrollTop = document.body.scrollTop;
-
-      if(this.visible) return;
 
       this.sourceElement = sourceElement;
 
@@ -130,7 +127,7 @@ module Carbon {
 
       this.didPan = true;
 
-      console.log('PAN:' + e.panDirection);
+      // console.log('PAN:' + e.panDirection);
 
       if (this.panDirection == 4 || this.panDirection == 2) {
     
@@ -143,7 +140,7 @@ module Carbon {
 
       this.panDirection = null;
 
-      console.log('pan end', e.deltaY);
+      //console.log('pan end', e.deltaY);
 
       if (Math.abs(e.deltaY) > 150) {
 
@@ -153,9 +150,7 @@ module Carbon {
 
         this.viewport.element.style.transform = `translateY(0px)`;
 
-        setTimeout(() => {
-          this.zoomOut();
-        }, 50);
+        setTimeout(this.zoomOut.bind(this), 50);
 
       }
       else {
@@ -185,7 +180,6 @@ module Carbon {
       this.fitObject();
     }
 
-
     onPanMove(e) {
       if (this.pannable.enabled) return;
                 
@@ -196,8 +190,7 @@ module Carbon {
       let transform = '';
 
       if (this.panDirection == 16 || this.panDirection == 8) {
-        var backgroundOpacity = 1 - Math.abs(e.deltaY / (this.height / 2));
-
+        let backgroundOpacity = 1 - Math.abs(e.deltaY / (this.height / 2));
 
         this.element.style.setProperty('--background-opacity', backgroundOpacity.toString());
       }
@@ -215,12 +208,9 @@ module Carbon {
     get isPannable() {
       return this.cloneEl.classList.contains('pannable');
     }
-
+    
     onTap(e) {
-
-      if (this.animating) {
-        return;
-      }
+      if (this.animating) return;
 
       if (this.didPan) {
         this.didPan = false;
@@ -300,7 +290,7 @@ module Carbon {
       let cloneEl = this.sourceElement.cloneNode(true) as HTMLElement;
 
       // Safari scales up the original pixels of sub-elements
-      // if it's a <carbon-image /> ... just scale up the <img />
+      // but is OK with images
 
       if (cloneEl.tagName == 'CARBON-IMAGE' && cloneEl.querySelector('img')) {
         cloneEl = cloneEl.querySelector('img');
@@ -330,12 +320,13 @@ module Carbon {
       
       this.viewport.element.appendChild(cloneEl);
 
+
       this.calculateTargetPosition(this.item);
 
       this.cloneEl = cloneEl;
     }
 
-    resetCloneStyle() {
+    resetCloneStyle() {      
       this.calculateTargetPosition(this.item);
 
       setStyle(this.cloneEl, {
@@ -345,7 +336,7 @@ module Carbon {
         left: '0',
         pointerEvents: 'none',
         width: this.origin.width  + 'px',
-        height:  this.origin.height + 'px',
+        height: this.origin.height + 'px',
         transformOrigin: 'left top',
         transition: null,
         transform: `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`
@@ -355,13 +346,11 @@ module Carbon {
     calculateTargetPosition(elementSize: Size) {
       this.origin = this.sourceElement.getBoundingClientRect();
 
-      let size = this.fit(
-        elementSize, 
-        { 
-          width: this.viewport.innerWidth,
-          height: this.viewport.innerHeight 
-        }
-      );
+
+      let size = this.fit(elementSize, { 
+        width: this.viewport.innerWidth,
+        height: this.viewport.innerHeight 
+      });
 
       this.fittedBox = {
         width  : size.width,
@@ -385,18 +374,7 @@ module Carbon {
     onScroll() {
       if (!this.sourceElement) return;
 
-      if (this.animating) {
-        this.calculateTargetPosition(this.item);
-
-
-        let remaining = this.animation.duration - this.animation.currentTime;
-
-
-        this.animation.pause();
-
-        this.cloneEl.style.transition = `transform ${remaining}ms ease-out`;
-        this.cloneEl.style.transform = `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
-      
+      if (this.state == 'opening') {
         return;
       }
       
@@ -406,6 +384,8 @@ module Carbon {
     }
 
     zoomIn(duration = 200) {
+
+      this.scrollTop = document.body.scrollTop;
       this.element.style.setProperty('--background-opacity', '1');
 
       this.viewport.element.style.transform = null;
@@ -415,6 +395,7 @@ module Carbon {
       this.element.classList.add('opening');
 
       this.state = 'opening';
+
       
       // this.cloneEl.addEventListener('transitionend', this.zoomInCompleted, false);
 
@@ -440,37 +421,33 @@ module Carbon {
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
         
-      if (otherImg) {
+      otherImg && this.item.load().then(() => {
+        animated.promise.then(() => {          
+          // otherImg.removeAttribute('srcset');
 
-        this.item.load().then(() => {
-          animated.promise.then(() => {          
-            // otherImg.removeAttribute('srcset');
+          setTimeout(() => {
+            console.log('better image', this.state);
 
-            setTimeout(() => {
+            if (!(this.state == 'opening' || this.state == 'opened')) {
+                return;
+            }
 
-              console.log('better image', this.state);
+            otherImg.srcset = this.item.url + ' 1x';
 
-              if (!(this.state == 'opening' || this.state == 'opened')) {
-                 return;
-              }
-
-              otherImg.srcset = this.item.url + ' 1x';
-
-              this.fitObject();
-            }, 1);
-
-          });
+            this.fitObject();
+          }, 1);
         });
-      }
+      });
       
-      setTimeout(() => {
+      this.animation.finished.then(() => {
         this.animating = false;
 
         animated.resolve(true);
+
+        this.state = 'opened';
         
         this.element.classList.remove('opening');
-      
-      }, 251);
+      });
 
       return animated;
     }
@@ -480,17 +457,13 @@ module Carbon {
     }
 
     fitBox() {
-
       if (!this.boxEl) {
         this.addBox();
       }
 
       this.calculateTargetPosition(this.item);
 
-      // Scale the cloned element
-      // this.cloneEl.style.transition = 'none';       
       this.boxEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
-
     }
 
     fitObject() {
@@ -528,6 +501,9 @@ module Carbon {
     }
 
     onClosed() {
+
+      this.scrolled = false;
+            
       this.element.classList.remove('open', 'closing');
       this.element.classList.add('closed');
 
@@ -550,8 +526,10 @@ module Carbon {
     }
     
     zoomOut() {
+      if (!this.cloneEl) return;
+      
       this.state = 'closing';
-
+      
       this.cloneEl.style.transition = null;
 
       this.resetCloneStyle();
@@ -569,38 +547,26 @@ module Carbon {
       this.animating = true;
 
       this.element.style.background = 'transparent';
-      
-      // this.cloneEl.style.transition = `transform ${this.animationDuration}ms ease-out`;
-      // this.cloneEl.style.transform = `translate(${this.origin.left}px,${this.origin.top}px) scale(${this.origin.width / this.cloneEl.clientWidth})`;
-
-
-
-      /// this.cloneEl.style.transition = `transform ${duration} ${this.easing}`;       
-      // this.cloneEl.style.transform = `translate(${this.fittedBox.left}px,${this.fittedBox.top}px) scale(${this.scale})`;
-
 
       if (this.animation) {
         this.animation.pause();
       }
 
-      this.animateBackToOrigin(this.animationDuration);
-
-      this.animationStart = new Date();
-
-      setTimeout(() => {
-
+      this.animateBackToOrigin(this.animationDuration).finished.then(() => {
         this.animating = false;
 
         this.onClosed();
-      }, this.animationDuration + 3);
-
+      });
     }
 
 
-    animateBackToOrigin(duration) {
+    animateBackToOrigin(duration, easing = 'easeOutQuad') {
       this.animation && this.animation.pause();
 
       this.calculateTargetPosition(this.cloneEl.getBoundingClientRect());
+
+      this.scrollTop = document.body.scrollTop;
+
 
       this.animation = anime({
         targets: this.cloneEl,
@@ -608,8 +574,20 @@ module Carbon {
         scale: this.origin.width / this.cloneEl.clientWidth,
         translateX: this.origin.left,
         translateY: this.origin.top,
-        easing: 'easeOutQuad'
+        update: (anim) => { 
+
+          let scrollY = this.scrollTop - document.body.scrollTop;
+
+          let val = parseFloat(anime.get(this.cloneEl, 'translateY', 'px'));
+
+          anime.set([ this.cloneEl ], { 
+            translateY: val + scrollY
+          });
+        },
+        easing: easing
       });
+
+      return this.animation;
     }
 
     get width() {
@@ -858,11 +836,10 @@ module Carbon {
 
       this.image = new Image();
 
-      this.image.onload = () => {
+      this.image.onload = function() {
         // otherImg.removeAttribute('srcset');
 
         deferred.resolve();
-
       };
 
       this.image.src = this.url;
@@ -949,7 +926,8 @@ module Carbon {
         this.offset.y = (this.viewport.height - this.height) / 2;
       }
 
-			this.element.style.transformOrigin = '0 0'; 
+      this.element.style.transformOrigin = '0 0'; 
+      
 			this.element.style.transform = `translateX(${this.x}px) translateY(${this.y}px) scale(${this.scale})`;
     }
   }
