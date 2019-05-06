@@ -166,6 +166,9 @@ module Carbon {
     }
 
     onPanStart(e) {
+      if (this.animating) return;
+
+      
       if (this.pannable.enabled) return;
           
       // console.log('pan start', e.offsetDirection); 
@@ -181,6 +184,9 @@ module Carbon {
     }
 
     onPanMove(e) {
+      if (this.animating) return;
+
+
       if (this.pannable.enabled) return;
                 
       // direction....
@@ -218,7 +224,7 @@ module Carbon {
         return;
       }
 
-      console.log('tap', this.pannable.dragging);
+      // console.log('tap', this.pannable.dragging);
 
       if (this.pannable.dragging)  {
         return;
