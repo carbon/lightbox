@@ -214,6 +214,7 @@ module Carbon {
     }
     
     onTap(e) {
+      if (this.animating) return;
 
       if (this.didPan) {
         this.didPan = false;
@@ -231,18 +232,11 @@ module Carbon {
 
       let canPan = this.isPannable && maxScale > 1;
       
-      console.log('zoom out!');
-      
       if (!canPan) {
-        this.animation.pause();
-
         this.zoomOut();
 
         return;
       }
-
-      if (this.animating) return;
-
 
       if (this.pannable.enabled) {
         this.pannable.content._scale = 1;        
