@@ -166,11 +166,9 @@ module Carbon {
     }
 
     onPanStart(e) {
-      if (this.animating) return;
+      if (this.animating || this.pannable.enabled) return;
 
       
-      if (this.pannable.enabled) return;
-          
       // console.log('pan start', e.offsetDirection); 
 
       // 16 = down
@@ -216,7 +214,6 @@ module Carbon {
     }
     
     onTap(e) {
-      if (this.animating) return;
 
       if (this.didPan) {
         this.didPan = false;
@@ -234,11 +231,18 @@ module Carbon {
 
       let canPan = this.isPannable && maxScale > 1;
       
+      console.log('zoom out!');
+      
       if (!canPan) {
+        this.animation.pause();
+
         this.zoomOut();
 
         return;
       }
+
+      if (this.animating) return;
+
 
       if (this.pannable.enabled) {
         this.pannable.content._scale = 1;        
@@ -402,13 +406,6 @@ module Carbon {
 
       this.state = 'opening';
 
-      
-      // this.cloneEl.addEventListener('transitionend', this.zoomInCompleted, false);
-
-      // this.cloneEl.style.transition = `transform ${duration} ${this.easing}`;       
-      // this.cloneEl.style.transform = `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`;
-
-
       this.animation && this.animation.pause();
       
       this.animating = true;      
@@ -416,13 +413,12 @@ module Carbon {
       this.animation = anime({
         targets: this.cloneEl,
         duration: duration,
-        translateX: this.fittedBox.left,
-        translateY: this.fittedBox.top,
-        scale: this.scale,
+        translateX: [ this.origin.left, this.fittedBox.left ],
+        translateY: [ this.origin.top, this.fittedBox.top ],
+        scale: [ 1, this.scale ],
         easing: 'easeOutQuad'
       });
 
-      
       let otherImg : HTMLImageElement = this.cloneEl.tagName == 'IMG' 
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
@@ -432,15 +428,13 @@ module Carbon {
           // otherImg.removeAttribute('srcset');
 
           setTimeout(() => {
-            console.log('better image', this.state);
-
             if (!(this.state == 'opening' || this.state == 'opened')) {
                 return;
             }
 
             otherImg.srcset = this.item.url + ' 1x';
 
-            this.fitObject();
+            // this.fitObject();
           }, 1);
         });
       });
