@@ -85,6 +85,10 @@ module Carbon {
       this.viewport.on('panend', this.onPanEnd.bind(this));
     }
 
+    on(type: String, callback: Function) {
+      return this.reactive.on(type, callback);
+    }
+
     async onCursorMove(e) {
       if (!this.visible || this.state == 'opening') return;
 
@@ -517,7 +521,6 @@ module Carbon {
       
       this.element.classList.remove('opening');
    
-
       return animated;
     }
 
@@ -526,9 +529,12 @@ module Carbon {
     }
 
     fitBox() {
+      if (!this.item || !this.sourceElement) return;
+
       if (!this.boxEl) {
         this.addBox();
       }
+     
 
       this.calculateTargetPosition(this.item);
 
@@ -745,7 +751,7 @@ module Carbon {
         top             : '0',
         left            : '0',
         width           : this.origin.width  + 'px',
-        height          :  this.origin.height + 'px',
+        height          : this.origin.height + 'px',
         transformOrigin : 'left top',
       });
 
