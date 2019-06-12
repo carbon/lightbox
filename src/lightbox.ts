@@ -48,6 +48,8 @@ module Carbon {
     cursor: Cursor;
     reactive = new Carbon.Reactive();
 
+    didScroll = false;
+
     constructor(options = null) {
       this.element = this.createElement();
 
@@ -170,8 +172,6 @@ module Carbon {
 
       this.didPan = true;
 
-      // console.log('PAN:' + e.panDirection);
-
       if (this.panDirection == 4 || this.panDirection == 2) {
     
         this.viewport.element.style.transform = null; //'translateY(0px)';
@@ -194,7 +194,6 @@ module Carbon {
         this.viewport.element.style.transform = `translateY(0px)`;
 
         setTimeout(this.zoomOut.bind(this), 50);
-
       }
       else {
 
@@ -227,11 +226,10 @@ module Carbon {
     }
 
     onPanMove(e) {
-      if (this.animating) return;
-
-
-      if (this.pannable.enabled) return;
-                
+      if (this.animating || this.pannable.enabled) { 
+        return;
+      }
+      
       // direction....
 
       this.viewport.element.style.transition = '';
@@ -290,10 +288,6 @@ module Carbon {
 
         return;
       }
-
-      
-
-      // console.log('tap', this.pannable.dragging);
 
       if (this.pannable.dragging)  {
         return;
@@ -397,7 +391,6 @@ module Carbon {
 
       this.viewport.element.appendChild(cloneEl);
 
-
       this.calculateTargetPosition(this.item);
 
       this.cloneEl = cloneEl;
@@ -444,7 +437,6 @@ module Carbon {
         this.fittedBox.left = elementSize.left;
       }
 
-
       this.scale = this.fittedBox.width / this.origin.width;
     }
 
@@ -461,7 +453,6 @@ module Carbon {
     }
 
     async zoomIn(duration = 200) {
-      
       this.state = 'opening';
 
       if (this.cursor) {
@@ -474,10 +465,9 @@ module Carbon {
 
       this.viewport.element.style.transform = null;
 
-      let animated = new Deferred<boolean>();
+      let deferred = new Deferred<boolean>();
 
       this.element.classList.add('opening');
-
 
       this.animation && this.animation.pause();
       
@@ -492,36 +482,31 @@ module Carbon {
         easing: 'easeOutQuad'
       });
 
-      let otherImg : HTMLImageElement = this.cloneEl.tagName == 'IMG' 
+      let otherImg = this.cloneEl.tagName == 'IMG' 
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
         
       otherImg && this.item.load().then(async () => {
-        await animated.promise;         
-          // otherImg.removeAttribute('srcset');
-
-        setTimeout(() => {
-          if (!(this.state == 'opening' || this.state == 'opened')) {
-              return;
-          }
-
-          otherImg.srcset = this.item.url + ' 1x';
-
+        await deferred.promise;         
+        
+        if (this.state == 'opened') {
           this.fitObject();
-        }, 1);
+
+          otherImg.srcset = this.item.url + ' 1x';          
+        }
       });
       
       await this.animation.finished;
 
       this.animating = false;
 
-      animated.resolve(true);
-
       this.state = 'opened';
       
+      deferred.resolve(true);
+
       this.element.classList.remove('opening');
    
-      return animated;
+      return deferred;
     }
 
     onResize() {
@@ -534,7 +519,6 @@ module Carbon {
       if (!this.boxEl) {
         this.addBox();
       }
-     
 
       this.calculateTargetPosition(this.item);
 
@@ -581,7 +565,7 @@ module Carbon {
         element: this.element
       });
 
-      this.scrolled = false;
+      this.didScroll = false;
             
       this.element.classList.remove('open', 'closing');
       this.element.classList.add('closed');
@@ -643,7 +627,6 @@ module Carbon {
       this.calculateTargetPosition(this.cloneEl.getBoundingClientRect());
 
       this.scrollTop = document.body.scrollTop;
-
 
       this.animation = anime({
         targets: this.cloneEl,
@@ -757,7 +740,6 @@ module Carbon {
 
       this.viewport.element.appendChild(this.boxEl);
     }
-
   }  
 
   class Viewport {
@@ -802,7 +784,6 @@ module Carbon {
       console.log('pan start!');
 
       this.reactive.trigger(a);
-
     }
 
     onPanMove(e) {      
@@ -1015,7 +996,6 @@ module Carbon {
     }
 
     update() {
-
       // console.log(this.viewport.width, this.width);
       
       if (this.width < this.viewport.width) {
