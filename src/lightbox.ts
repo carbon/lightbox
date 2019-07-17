@@ -48,6 +48,8 @@ module Carbon {
     cursor: Cursor;
     reactive = new Carbon.Reactive();
 
+    isSlideshow = false;
+    
     didScroll = false;
 
     constructor(options = null) {
@@ -100,13 +102,21 @@ module Carbon {
       var nearTop =  e.clientY < 200;
       var nearBottom = distanceFromBottom < 200;
 
-      if (distanceFromRight < 300 && !nearTop && !nearBottom) {
-        await this.cursor.toRightArrow();
+      if (this.isSlideshow) {
+        if (distanceFromRight < 300 && !nearTop && !nearBottom) {
+          await this.cursor.toRightArrow();
+        
+          return;
+        }
+        else if (e.clientX < 300 && !nearTop && !nearBottom) {
+          await this.cursor.toLeftArrow();        
+        
+          return;
+        }
       }
-      else if (e.clientX < 300 && !nearTop && !nearBottom) {
-        await this.cursor.toLeftArrow();        
-      }
-      else if (e.target && e.target.classList.contains('box')) {
+
+
+      if (e.target && e.target.classList.contains('box')) {
         await this.cursor.toZoomOut();
       }
       else {
@@ -123,6 +133,15 @@ module Carbon {
         type: 'open',
         element: this.element
       });
+
+      if (this.cursor) {
+        this.cursor.show();
+        this.cursor.mode = 'manual';
+      }
+      else {
+        this.element.style.cursor = 'zoom-out';
+      }
+
 
       this.sourceElement = sourceElement;
 
@@ -154,7 +173,6 @@ module Carbon {
       this.element.classList.add('open');
       this.element.classList.remove('closed');
       this.element.style.visibility = 'visible';
-      this.element.style.cursor = 'zoom-out';
 
       this.pannable = new Carbon.Pannable(this.cloneEl, this.viewport);
 
@@ -262,13 +280,6 @@ module Carbon {
       if (this.cursor) {
 
         if (this.cursor.type == 'right-arrow' || this.cursor.type == 'left-arrow') {
-
-          await anime({
-            targets: this.cursor.element,
-            scale: [ 1, 1.5, 1 ],
-            easing: 'easeOutQuad',
-            duration: 250
-          });
 
           // TODO: Get the next slide...
 
@@ -565,6 +576,10 @@ module Carbon {
         element: this.element
       });
 
+      if (this.cursor) {
+        this.cursor.mode = 'dynamic';
+      }
+
       this.didScroll = false;
             
       this.element.classList.remove('open', 'closing');
@@ -598,13 +613,14 @@ module Carbon {
 
       this.state = 'closing';
       
+      this.element.style.cursor = null;
+
       this.cloneEl.style.transition = null;
 
       this.resetCloneStyle();
 
       if(!this.visible) return;
 
-      this.element.style.cursor = null;
       this.element.classList.add('closing');
       
       this.visible = false;
@@ -709,21 +725,15 @@ module Carbon {
         userSelect     : 'none'
       });
 
-
       element.appendChild(backgroundEl);
       element.appendChild(viewportEl);
 
-      
-
       document.body.appendChild(element);
-
-
 
       return element;
     }
 
     addBox() {
-
       this.boxEl = document.createElement('div');
       
       this.boxEl.classList.add('box');
@@ -1153,8 +1163,6 @@ module Carbon {
     }
   }
 }
-
-
 
 Carbon.controllers.set('zoom', {
   in(e) {
