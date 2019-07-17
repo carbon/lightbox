@@ -472,6 +472,7 @@ module Carbon {
       }
 
       this.scrollTop = document.body.scrollTop;
+
       this.element.style.setProperty('--background-opacity', '1');
 
       this.viewport.element.style.transform = null;
@@ -586,6 +587,7 @@ module Carbon {
       this.element.classList.add('closed');
 
       this.element.style.background = '';
+      this.cursor.element.style.opacity = null
       this.state = 'closed';
 
       this.sourceElement.style.visibility = 'visible';
@@ -606,9 +608,15 @@ module Carbon {
     async zoomOut() {
       if (!this.cloneEl) return;
       
-      if (this.cursor) {
-        this.cursor.toZoomIn();
+      if (this.cursor) {        
         this.cursor.scale(this.cursor.defaultScale);
+
+        if (this.cursor.type == 'close') {
+          this.cursor.element.style.opacity = '0';
+        }
+        else {
+          this.cursor.toZoomIn();
+        }         
       }
 
       this.state = 'closing';
@@ -1163,6 +1171,7 @@ module Carbon {
     }
   }
 }
+
 
 Carbon.controllers.set('zoom', {
   in(e) {
