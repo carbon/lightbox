@@ -587,7 +587,6 @@ module Carbon {
       this.element.classList.add('closed');
 
       this.element.style.background = '';
-      this.cursor.element.style.opacity = null
       this.state = 'closed';
 
       this.sourceElement.style.visibility = 'visible';
