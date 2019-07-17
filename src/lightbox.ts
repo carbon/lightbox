@@ -608,7 +608,7 @@ module Carbon {
       
       if (this.cursor) {
         this.cursor.toZoomIn();
-        this.cursor.scale(0.5);
+        this.cursor.scale(this.cursor.defaultScale);
       }
 
       this.state = 'closing';
