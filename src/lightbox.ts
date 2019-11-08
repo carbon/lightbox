@@ -4,6 +4,23 @@ module Carbon {
       element.style[key] = data[key];
     }
   }
+
+  const styles = 
+`
+carbon-slide {
+  display        : flex;
+  position       : absolute;
+  top            : 0;
+  left           : 0;
+  padding        : 25px;
+  box-sizing      : border-box;
+  width          : 100%;
+  height         : 100%;
+  justify-content : center;
+  user-select     : none;
+  transform-origin: 0 0;
+}
+`;
   
   export class Lightbox {
     static instance: Lightbox;
@@ -49,6 +66,8 @@ module Carbon {
     reactive = new Carbon.Reactive();
 
     isSlideshow = false;
+
+    slide: Slide;
     
     didScroll = false;
 
@@ -87,6 +106,12 @@ module Carbon {
       this.viewport.on('panstart', this.onPanStart.bind(this));
       this.viewport.on('panmove', this.onPanMove.bind(this));
       this.viewport.on('panend', this.onPanEnd.bind(this));
+
+      let styleEl = document.createElement('style');
+
+      styleEl.textContent = styles;
+
+      this.element.appendChild(styleEl);
     }
 
     on(type: String, callback: Function) {
@@ -99,8 +124,8 @@ module Carbon {
       let distanceFromRight = document.body.clientWidth - e.clientX;
       let distanceFromBottom = document.body.clientHeight- e.clientY;
 
-      var nearTop =  e.clientY < 200;
-      var nearBottom = distanceFromBottom < 200;
+      let nearTop =  e.clientY < 200;
+      let nearBottom = distanceFromBottom < 200;
 
       if (this.isSlideshow) {
         if (distanceFromRight < 300 && !nearTop && !nearBottom) {
@@ -141,7 +166,6 @@ module Carbon {
       else {
         this.element.style.cursor = 'zoom-out';
       }
-
 
       this.sourceElement = sourceElement;
 
@@ -192,7 +216,7 @@ module Carbon {
 
       if (this.panDirection == 4 || this.panDirection == 2) {
     
-        this.viewport.element.style.transform = null; //'translateY(0px)';
+        this.slide.element.style.transform = null; //'translateY(0px)';
 
         return;
       }
@@ -201,15 +225,12 @@ module Carbon {
 
       this.panDirection = null;
 
-      //console.log('pan end', e.deltaY);
-
       if (Math.abs(e.deltaY) > 150) {
-
         this.animating = true;
 
-        this.viewport.element.style.transition = `transform 50ms ${this.easing}`;
+        this.slide.element.style.transition = `transform 50ms ${this.easing}`;
 
-        this.viewport.element.style.transform = `translateY(0px)`;
+        this.slide.element.style.transform = `translateY(0px)`;
 
         setTimeout(this.zoomOut.bind(this), 50);
       }
@@ -217,9 +238,9 @@ module Carbon {
 
         this.element.style.setProperty('--background-opacity', '1');
 
-        this.viewport.element.style.transition = `transform 200ms ease-in`;
+        this.slide.element.style.transition = `transform 200ms ease-in`;
 
-        this.viewport.element.style.transform = `translateY(0px)`;
+        this.slide.element.style.transform = `translateY(0px)`;
 
         this.element.style.transform = null;
       }
@@ -228,7 +249,6 @@ module Carbon {
     onPanStart(e) {
       if (this.animating || this.pannable.enabled) return;
 
-      
       // console.log('pan start', e.offsetDirection); 
 
       // 16 = down
@@ -250,7 +270,7 @@ module Carbon {
       
       // direction....
 
-      this.viewport.element.style.transition = '';
+      this.slide.element.style.transition = '';
       
       let transform = '';
 
@@ -267,7 +287,9 @@ module Carbon {
         case 2: transform = `translateX(${e.deltaX}px)`; break;
       }
 
-      this.viewport.element.style.transform = transform;
+      // TODO: Request animation frame
+
+      this.slide.element.style.transform = transform;
     }
 
     get isPannable() {
@@ -284,10 +306,10 @@ module Carbon {
           // TODO: Get the next slide...
 
           await anime({
-            targets: this.viewport.element,
-            translateX: this.cursor.type == 'right-arrow' ? - this.viewport.width : this.viewport.width,
-            easing: 'cubicBezier(0.4, 0.0, 0.2, 1)',
-            duration: 300
+            targets    : this.viewport.element,
+            translateX : this.cursor.type == 'right-arrow' ? - this.viewport.width : this.viewport.width,
+            easing     : 'cubicBezier(0.4, 0.0, 0.2, 1)',
+            duration   : 300
           });
 
           return;
@@ -400,10 +422,15 @@ module Carbon {
       
       // TODO: Append slide..
 
-      this.viewport.element.appendChild(cloneEl);
+      let slide = Slide.create({ }); 
+      
+      slide.element.appendChild(cloneEl);
+
+      this.viewport.element.appendChild(slide.element);
 
       this.calculateTargetPosition(this.item);
 
+      this.slide = slide;
       this.cloneEl = cloneEl;
     }
 
@@ -504,7 +531,8 @@ module Carbon {
         if (this.state == 'opened') {
           this.fitObject();
 
-          otherImg.srcset = this.item.url + ' 1x';          
+          otherImg.decoding = 'sync';
+          otherImg.srcset = this.item.url + ' 1x';
         }
       });
       
@@ -601,7 +629,10 @@ module Carbon {
       if (this.cloneEl) {
         this.cloneEl.remove();
         this.cloneEl = null;
+        this.slide = null;
       }
+
+      this.viewport.element.innerHTML = '';
     }
     
     async zoomOut() {
@@ -719,16 +750,10 @@ module Carbon {
       viewportEl.className = 'viewport';
      
       setStyle(viewportEl, { 
-        display        : 'flex',
         overflow       : 'hidden',
-        position       : 'absolute',
+        position       : 'relative',
         width          : '100%',
         height         : '100%',
-        top            : '0px',
-        left           : '0px',
-        padding        : 25 + 'px',
-        boxSizing      : 'border-box',
-        justifyContent : 'center',
         userSelect     : 'none'
       });
 
@@ -903,16 +928,35 @@ module Carbon {
 
   class Slide {
     element: HTMLElement;
+    x = 0;
+    y = 0;
 
     constructor(element: HTMLElement) {
       this.element = element;
+      
+    }
+
+    setOffset(offset) {
+      /*
+      if (this.width < this.viewport.width) {
+        this.offset.x = (this.viewport.width - this.width) / 2;
+      }
+
+      if (this.height < this.viewport.height) {
+        this.offset.y = (this.viewport.height - this.height) / 2;
+      }
+      */
+
+      this.x = offset.x;
+      this.y = offset.y;
+
+      this.element.style.transformOrigin = '0 0'; 
+      
+			this.element.style.transform = `translateX(${this.x}px) translateY(${this.y}px))`;
     }
 
     static create(item: LightboxItem) {
-      
-      var element = document.createElement('div');
-
-      element.classList.add('slide');
+      let element = document.createElement('carbon-slide');
 
       return new Slide(element);      
     }
@@ -934,8 +978,6 @@ module Carbon {
       this.image = new Image();
 
       this.image.onload = function() {
-        // otherImg.removeAttribute('srcset');
-
         deferred.resolve();
       };
 
@@ -1007,7 +1049,7 @@ module Carbon {
 
       this.scale = this.relativeScale.getValue(value); // Convert to absolute scale
       
-      var anchor = this.viewport.anchorPoint;
+      let anchor = this.viewport.anchorPoint;
       
       this.viewport.centerAt(anchor);
     }
@@ -1114,8 +1156,9 @@ module Carbon {
 		onDrag(ev) {
 			if (!this.enabled) return false;
 
-			// console.log('DRAGGING PAN');
-			
+			console.log('DRAGGING PAN');
+      
+      
 			this.viewport.setOffset({
 				x: this.position.x + ev.deltaX,
 				y: this.position.y + ev.deltaY
@@ -1171,10 +1214,10 @@ module Carbon {
   }
 }
 
-
 Carbon.controllers.set('zoom', {
   in(e) {
     if (e.target.closest('carbon-indicator, .hovering')) return;
+
     let lightbox = Carbon.Lightbox.get({ cursor: window.cursor });
 
     lightbox.open(e.target);
@@ -1192,3 +1235,9 @@ interface Box {
   top: number;
   left: number;
 }
+
+// Slides
+
+// Image
+// Video
+// Audio
