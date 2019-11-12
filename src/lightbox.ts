@@ -8,18 +8,20 @@ module Carbon {
   const styles = 
 `
 carbon-slide {
-  display        : flex;
-  position       : absolute;
-  top            : 0;
-  left           : 0;
-  padding        : 25px;
-  box-sizing      : border-box;
-  width          : 100%;
-  height         : 100%;
-  justify-content : center;
-  user-select     : none;
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 25px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
   transform-origin: 0 0;
 }
+
 `;
   
   export class Lightbox {
@@ -57,7 +59,6 @@ carbon-slide {
 
     easing = 'cubic-bezier(.175,.885,.32,1)';
 
-    items: LightboxItem[];
     boxEl: HTMLElement;
     didPan = false;
     animation: any;
@@ -173,22 +174,16 @@ carbon-slide {
 
       this.scale = 0;
 
-      let data = sourceElement.dataset;
+      let { zoomSrc, zoomSize} = sourceElement.dataset;
 
-      this.item = new LightboxItem();
-      
-      this.item.url = data['zoomSrc'];
-      
-      if (data['zoomSize']) {
-        let parts = data['zoomSize'].split('x');
+      this.item = new LightboxItem(zoomSrc);
+            
+      if (zoomSize) {
+        let parts = zoomSize.split('x');
         
         this.item.width = parseInt(parts[0], 10);
         this.item.height = parseInt(parts[1], 10);
-      }
-      else {
-        this.item.width  = parseInt(data['zoomWidth'], 10);
-        this.item.height = parseInt(data['zoomHeight'], 10);
-      }
+      }      
 
       this.createClone();
 
@@ -454,7 +449,6 @@ carbon-slide {
     calculateTargetPosition(elementSize: Size) {
       this.origin = this.sourceElement.getBoundingClientRect();
 
-
       let size = this.fit(elementSize, { 
         width: this.viewport.innerWidth,
         height: this.viewport.innerHeight 
@@ -513,34 +507,35 @@ carbon-slide {
       this.animating = true;      
 
       this.animation = anime({
-        targets: this.cloneEl,
-        duration: duration,
-        translateX: [ this.origin.left, this.fittedBox.left ],
-        translateY: [ this.origin.top, this.fittedBox.top ],
-        scale: [ 1, this.scale ],
-        easing: 'easeOutQuad'
+        targets    :   this.cloneEl,
+        duration   :   duration,
+        translateX : [ this.origin.left, this.fittedBox.left ],
+        translateY : [ this.origin.top, this.fittedBox.top ],
+        scale      : [ 1, this.scale ],
+        easing     :   'easeOutQuad'
       });
 
       let otherImg = this.cloneEl.tagName == 'IMG' 
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
-        
-      otherImg && this.item.load().then(async () => {
-        await deferred.promise;         
-        
-        if (this.state == 'opened') {
-          this.fitObject();
-
-          otherImg.decoding = 'sync';
-          otherImg.srcset = this.item.url + ' 1x';
-        }
-      });
+  
       
       await this.animation.finished;
 
       this.animating = false;
+      this.animation = null;
 
       this.state = 'opened';
+      
+      if (otherImg) {
+        otherImg.onload = () => {
+          this.state == 'opened' && this.fitObject();
+        };
+
+        otherImg.decoding = 'sync';
+        otherImg.src = this.item.url;
+        otherImg.srcset = this.item.url + ' 1x';
+      }
       
       deferred.resolve(true);
 
@@ -572,6 +567,9 @@ carbon-slide {
       this.cloneEl.style.objectFit = 'scale-down';
       this.cloneEl.draggable = false;
       this.cloneEl.style.pointerEvents = 'none';
+      this.cloneEl.removeAttribute('data-zoom-src');
+      this.cloneEl.removeAttribute('data-zoom-size');
+      
 
       this.fitBox();
     }
@@ -599,7 +597,7 @@ carbon-slide {
       }
     }
 
-    onClosed() {
+    private onClosed() {
       this.reactive.trigger({
         type: 'close',
         element: this.element
@@ -671,6 +669,7 @@ carbon-slide {
       await this.animateBackToOrigin(this.animationDuration).finished;
 
       this.animating = false;
+      this.animation = null;
 
       this.onClosed();
     }
@@ -968,23 +967,10 @@ carbon-slide {
     height: number;
     image?: HTMLImageElement;
 
-    constructor() {
-
+    constructor(url) {
+      this.url = url;
     }
 
-    load() {
-      let deferred = new Deferred();
-
-      this.image = new Image();
-
-      this.image.onload = function() {
-        deferred.resolve();
-      };
-
-      this.image.src = this.url;
-
-      return deferred.promise;
-    }
   }
 
 	class ViewportContent {
