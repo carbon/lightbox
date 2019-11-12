@@ -7,7 +7,12 @@ module Carbon {
 
   const styles = 
 `
-carbon-slide {
+carbon-lightbox {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+carbon-lightbox carbon-slide {
   display: flex;
   position: absolute;
   top: 0;
@@ -717,7 +722,7 @@ carbon-slide {
     }
 
     createElement() {
-      let element = document.createElement('div'); // div.lightbox
+      let element = document.createElement('carbon-lightbox');
         
       element.className = 'lightbox';
 
