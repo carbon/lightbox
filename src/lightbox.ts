@@ -14,6 +14,8 @@ carbon-lightbox {
 
 carbon-lightbox carbon-slide {
   display: flex;
+  align-items: center;
+  justify-content: center;
   position: absolute;
   top: 0;
   left: 0;
@@ -120,7 +122,7 @@ carbon-lightbox carbon-slide {
       this.element.appendChild(styleEl);
     }
 
-    on(type: String, callback: Function) {
+    on(type: string, callback: Function) {
       return this.reactive.on(type, callback);
     }
 
@@ -235,14 +237,11 @@ carbon-lightbox carbon-slide {
         setTimeout(this.zoomOut.bind(this), 50);
       }
       else {
-
+        this.element.style.transform = null;
         this.element.style.setProperty('--background-opacity', '1');
 
         this.slide.element.style.transition = `transform 200ms ease-in`;
-
         this.slide.element.style.transform = `translateY(0px)`;
-
-        this.element.style.transform = null;
       }
     }
 
@@ -402,15 +401,15 @@ carbon-lightbox carbon-slide {
 
       // position over the current element
       setStyle(cloneEl, {
-        display: 'block',
-        position: 'absolute',
-        top: '0',
-        left: '0',
-        pointerEvents: 'none',
-        width: this.origin.width  + 'px',
-        height:  this.origin.height + 'px',
-        transformOrigin: 'left top',
-        transform: `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(1)`
+        display         : 'block',
+        position        : 'absolute',
+        top             : '0',
+        left            : '0',
+        pointerEvents   : 'none',
+        width           : this.origin.width  + 'px',
+        height          :  this.origin.height + 'px',
+        transformOrigin : 'left top',
+        transform       : `translateX(${this.origin.left}px) translateY(${this.origin.top}px) scale(1)`
       });
 
       cloneEl.draggable = false;
@@ -540,6 +539,7 @@ carbon-lightbox carbon-slide {
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
         otherImg.srcset = this.item.url + ' 1x';
+
       }
       
       deferred.resolve(true);
@@ -567,13 +567,28 @@ carbon-lightbox carbon-slide {
 
     fitObject() {
       this.cloneEl.removeAttribute('style');
-      this.cloneEl.style.width = '100%';
+      
+
+      if (this.cloneEl.tagName == 'IMG') {
+        this.cloneEl.width = this.item.width;
+        this.cloneEl.height = this.item.height;
+
+        this.cloneEl.style.height = 'auto';
+        this.cloneEl.style.width = 'auto';
+        this.cloneEl.style.maxWidth = '100%';
+        this.cloneEl.style.maxHeight = '100%';
+      }
+      else {
+        this.cloneEl.style.width = '100%';
+        this.cloneEl.style.objectFit = 'scale-down';
+      }
+
       this.cloneEl.style.userSelect = 'none';
-      this.cloneEl.style.objectFit = 'scale-down';
       this.cloneEl.draggable = false;
       this.cloneEl.style.pointerEvents = 'none';
       this.cloneEl.removeAttribute('data-zoom-src');
       this.cloneEl.removeAttribute('data-zoom-size');
+
       
 
       this.fitBox();
@@ -926,9 +941,9 @@ carbon-lightbox carbon-slide {
 	}
   
   // viewport
-  //   slide
-  //   slide
-  //   slide
+  //   carbon-slide
+  //   carbon-slide
+  //   carbon-slide
 
   class Slide {
     element: HTMLElement;
@@ -937,7 +952,6 @@ carbon-lightbox carbon-slide {
 
     constructor(element: HTMLElement) {
       this.element = element;
-      
     }
 
     setOffset(offset) {
@@ -1215,6 +1229,18 @@ Carbon.controllers.set('zoom', {
   }
 });
 
+// audio/mp3
+// image/jpeg
+// video/mp4
+
+interface LightboxItem {
+  type: string;
+  url: string;
+
+  // full
+  // normal
+}
+
 interface Size {
   width: number;
   height: number;
@@ -1229,6 +1255,6 @@ interface Box {
 
 // Slides
 
-// Image
-// Video
-// Audio
+// - Audio
+// - Image
+// - Video

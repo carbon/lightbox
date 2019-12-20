@@ -10,6 +10,7 @@
     "alwaysStrict": true
   },
   "files": [
-    "src/lightbox.ts"
+    "src/lightbox.ts",
+    "src/reactive.d.ts"
   ]
 }
