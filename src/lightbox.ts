@@ -435,7 +435,7 @@ carbon-lightbox carbon-slide {
 
     resetCloneStyle() {      
       this.calculateTargetPosition(this.item);
-
+      
       setStyle(this.cloneEl, {
         display: 'block',
         position: 'absolute',
@@ -446,6 +446,8 @@ carbon-lightbox carbon-slide {
         height: this.origin.height + 'px',
         transformOrigin: 'left top',
         transition: null,
+        maxHeight: null,
+        maxWidth: null,
         transform: `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`
       });
     }
@@ -523,7 +525,6 @@ carbon-lightbox carbon-slide {
         ? this.cloneEl as HTMLImageElement
         : this.cloneEl.querySelector('img');
   
-      
       await this.animation.finished;
 
       this.animating = false;
@@ -539,7 +540,7 @@ carbon-lightbox carbon-slide {
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
         otherImg.srcset = this.item.url + ' 1x';
-
+        
       }
       
       deferred.resolve(true);
