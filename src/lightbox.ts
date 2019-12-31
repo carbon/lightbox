@@ -161,12 +161,12 @@ carbon-lightbox carbon-slide.next {
       let nearBottom = distanceFromBottom < 200;
 
       if (this.isSlideshow) {
-        if (distanceFromRight < 300 && !nearTop && !nearBottom) {
+        if (distanceFromRight < 300 && !nearTop && !nearBottom && this.nextSlide) {
           await this.cursor.toRightArrow();
         
           return;
         }
-        else if (e.clientX < 300 && !nearTop && !nearBottom) {
+        else if (e.clientX < 300 && !nearTop && !nearBottom && this.prevSlide) {
           await this.cursor.toLeftArrow();        
         
           return;
@@ -451,12 +451,13 @@ carbon-lightbox carbon-slide.next {
       if (this.animating) return;
 
       if (this.cursor && (this.cursor.type == 'right-arrow' || this.cursor.type == 'left-arrow')) {
-        await anime({
-          targets    : this.viewport.element,
-          translateX : this.cursor.type == 'right-arrow' ? - this.viewport.width : this.viewport.width,
-          easing     : 'cubicBezier(0.4, 0.0, 0.2, 1)',
-          duration   : 300
-        });
+
+        if (this.cursor.type == 'right-arrow') {
+          this.next();
+        }
+        else if (this.cursor.type == 'left-arrow') {
+          this.prev();
+        }
 
         return;
         
