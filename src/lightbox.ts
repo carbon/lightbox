@@ -294,11 +294,14 @@ carbon-lightbox carbon-slide.next {
       if (Math.abs(e.deltaY) > 150) {
         this.animating = true;
 
-        this.slide.element.style.transition = `transform 50ms ${this.easing}`;
+        this.slide.element.style.transition = null;
 
         this.slide.element.style.transform = `translateY(0px)`;
 
-        setTimeout(this.zoomOut.bind(this), 50);
+
+        // TODO: offset the object... 
+
+       this.zoomOut({ offsetY: e.deltaY });
       }
       else {
         this.element.style.transform = null;
@@ -778,10 +781,12 @@ carbon-lightbox carbon-slide.next {
       this.viewport.element.innerHTML = '';
     }
     
-    async zoomOut() {
+    async zoomOut(options) {
       if (!this.item) return;
 
       if(!this.visible) return;
+
+      options = options || { };
 
       if (this.cursor) {        
         this.cursor.scale(this.cursor.defaultScale);
@@ -805,6 +810,8 @@ carbon-lightbox carbon-slide.next {
       // prepare for animation ---
       let originBox = this.item.originBox;
 
+      let offsetY = options.offsetY || 0;
+
       setStyle(this.slide.objectEl, {
         display: 'block',
         position: 'absolute',
@@ -816,7 +823,7 @@ carbon-lightbox carbon-slide.next {
         transition: null,
         maxHeight: null,
         maxWidth: null,
-        transform: `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px) scale(${this.scale})`
+        transform: `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top + offsetY}px) scale(${this.scale})`
       });
       
       this.visible = false;
