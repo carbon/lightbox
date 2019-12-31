@@ -547,7 +547,9 @@ carbon-lightbox carbon-slide.next {
       if (cloneEl.tagName == 'CARBON-IMAGE' && cloneEl.querySelector('img,video')) {
         cloneEl = cloneEl.querySelector('img,video');
 
-        cloneEl.removeAttribute('srcset');
+        cloneEl.width = this.item.width;
+        cloneEl.height = this.item.height;
+    
         cloneEl.removeAttribute('data-src');
         cloneEl.removeAttribute('data-srcset');
       }
@@ -712,7 +714,6 @@ carbon-lightbox carbon-slide.next {
       
       slide.element.appendChild(this.createClone(item));
       
-      slide.objectEl.decoding = 'sync';
       slide.objectEl.src = item.url;
       slide.objectEl.srcset = item.url + ' 1x';
 
@@ -720,8 +721,6 @@ carbon-lightbox carbon-slide.next {
 
       return slide;
     }
-
-    
 
     private fit(element: Size, box: Size) : Size {
       if (element.height <= box.height && element.width <= box.width) {
@@ -1111,8 +1110,6 @@ carbon-lightbox carbon-slide.next {
       el.removeAttribute('style');
       
       if (el.tagName == 'IMG' || el.tagName == 'VIDEO') {
-   
-
         el.style.height = 'auto';
         el.style.width = 'auto';
         el.style.maxWidth = '100%';
