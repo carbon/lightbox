@@ -188,10 +188,6 @@ carbon-lightbox carbon-slide.next {
         return;
       }
 
-      this.reactive.trigger({
-        type: 'open',
-        element: this.element
-      });
 
       if (this.cursor) {
         this.cursor.show();
@@ -202,6 +198,13 @@ carbon-lightbox carbon-slide.next {
       }
 
       this.item = new LightboxItem(sourceElement);
+
+
+      this.reactive.trigger({
+        type    : 'open',
+        element : this.element,
+        item    : this.item
+      });
 
       this.scale = 0;
       
