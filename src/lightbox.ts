@@ -1123,7 +1123,7 @@ carbon-lightbox carbon-slide.next {
     }
   }
 
-  class LightboxItem {
+  export class LightboxItem {
     sourceElement: HTMLElement;
     width: number;
     height: number;
