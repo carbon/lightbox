@@ -466,7 +466,6 @@ carbon-lightbox carbon-slide.next {
         }
 
         return;
-        
       }
       
       if (this.didPan) {
@@ -507,7 +506,6 @@ carbon-lightbox carbon-slide.next {
 
       this.slide.fitObject();
 
-      
       this.calculateBox(this.item);
 
       let l = e.clientX - this.fittedBox.left;
@@ -788,22 +786,23 @@ carbon-lightbox carbon-slide.next {
 
       options = options || { };
 
-      if (this.cursor) {        
-        this.cursor.scale(this.cursor.defaultScale);
+    
 
-        if (this.cursor.type == 'close') {
-          this.cursor.element.style.opacity = '0';
-        }
-        else {
-          this.cursor.toZoomIn();
-        }         
-      }
 
       this.state = 'closing';
       this.element.classList.add('closing');
 
-      this.element.style.cursor = null;
 
+      if (this.cursor) {        
+        this.cursor.scale(this.cursor.defaultScale);                 
+      }
+
+      this.reactive.trigger({
+        type: 'closing',
+        element: this.element
+      });
+      
+      this.element.style.cursor = null;
 
       this.calculateBox(this.item);
       
