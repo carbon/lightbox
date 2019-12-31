@@ -670,6 +670,7 @@ carbon-lightbox carbon-slide.next {
 
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
+        otherImg.srcset = this.item.url + ' 1x';
       }
       
       deferred.resolve(true);
@@ -709,11 +710,11 @@ carbon-lightbox carbon-slide.next {
       let slide = Slide.create(item); 
       
       slide.element.appendChild(this.createClone(item));
-
-      slide.objectEl.src = null;
+      
       slide.objectEl.decoding = 'sync';
       slide.objectEl.src = item.url;
- 
+      slide.objectEl.srcset = this.item.url + ' 1x';
+
       slide.fitObject();
 
       return slide;
