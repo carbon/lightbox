@@ -713,7 +713,7 @@ carbon-lightbox carbon-slide.next {
       
       slide.objectEl.decoding = 'sync';
       slide.objectEl.src = item.url;
-      slide.objectEl.srcset = this.item.url + ' 1x';
+      slide.objectEl.srcset = item.url + ' 1x';
 
       slide.fitObject();
 
