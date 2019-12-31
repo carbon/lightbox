@@ -1,10 +1,6 @@
 module Carbon {
-
-
   document.addEventListener('keydown', e => {
-
     if (!window.lightbox) return;
-
 
     if (!window.lightbox.element.classList.contains('open')) return false;
 
@@ -13,7 +9,6 @@ module Carbon {
       case 37: window.lightbox.prev(); break; // left
     }
   });
-
 
   function setStyle(element: HTMLElement, data: any) {
     for (var key of Object.keys(data)) {
