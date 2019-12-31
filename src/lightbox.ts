@@ -709,7 +709,8 @@ carbon-lightbox carbon-slide.next {
       let slide = Slide.create(item); 
       
       slide.element.appendChild(this.createClone(item));
-      
+
+      slide.objectEl.src = null;
       slide.objectEl.decoding = 'sync';
       slide.objectEl.src = item.url;
  
