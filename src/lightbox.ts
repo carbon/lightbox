@@ -543,12 +543,15 @@ carbon-lightbox carbon-slide.next {
       // Safari scales up the original pixels of sub-elements
       // - use an IMG
 
-      if (cloneEl.tagName == 'CARBON-IMAGE' && cloneEl.querySelector('img')) {
-        cloneEl = cloneEl.querySelector('img');
+      if (cloneEl.tagName == 'CARBON-IMAGE' && cloneEl.querySelector('img,video')) {
+        cloneEl = cloneEl.querySelector('img,video');
+
+        cloneEl.removeAttribute('srcset');
+        cloneEl.removeAttribute('data-src');
+        cloneEl.removeAttribute('data-srcset');
       }
 
       cloneEl.removeAttribute('style');
-
       
       cloneEl.classList.add('clone');
       cloneEl.classList.remove('zoomable');
@@ -667,7 +670,6 @@ carbon-lightbox carbon-slide.next {
 
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
-        otherImg.srcset = this.item.url + ' 1x';
       }
       
       deferred.resolve(true);
@@ -707,9 +709,10 @@ carbon-lightbox carbon-slide.next {
       let slide = Slide.create(item); 
       
       slide.element.appendChild(this.createClone(item));
-
+      
+      slide.objectEl.decoding = 'sync';
       slide.objectEl.src = item.url;
-
+ 
       slide.fitObject();
 
       return slide;
@@ -1100,13 +1103,14 @@ carbon-lightbox carbon-slide.next {
       el.removeAttribute('style');
       
       if (el.tagName == 'IMG' || el.tagName == 'VIDEO') {
-        el.width = this.item.width;
-        el.height = this.item.height;
+   
 
         el.style.height = 'auto';
         el.style.width = 'auto';
         el.style.maxWidth = '100%';
         el.style.maxHeight = '100%';
+        el.width = this.item.width;
+        el.height = this.item.height;
       }
 
       el.style.willChange = null;
