@@ -557,7 +557,7 @@ carbon-lightbox carbon-slide.next {
       cloneEl.removeAttribute('style');
       
       cloneEl.classList.add('clone');
-      cloneEl.classList.remove('zoomable');
+      cloneEl.classList.remove('zoomable', 'lazy', 'loaded');
 
       cloneEl.removeAttribute('on-click');
       
