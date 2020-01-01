@@ -1,6 +1,6 @@
 {
   "name": "lightbox",
-  "version": "0.13.12",
+  "version": "0.14.0",
   "main": "lib/lightbox.js",
   "author": "Jason Nelson",
   "license": "MIT"
