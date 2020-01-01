@@ -246,6 +246,11 @@ carbon-lightbox carbon-slide.next {
     }
 
     onPanEnd(e: any) {
+      this.reactive.trigger({
+        type: 'panEnd',
+        element: this.element
+      });
+
       if (this.pannable.enabled || this.pannable.dragging) return;
 
       var a = e.deltaX / this.viewport.width;
@@ -394,8 +399,6 @@ carbon-lightbox carbon-slide.next {
     onPanStart(e: any) {
       if (this.animating || this.pannable.enabled) return;
 
-      // console.log('pan start', e.offsetDirection); 
-
       // 16 = down
       // 8 = up
       // 4 = right
@@ -406,6 +409,12 @@ carbon-lightbox carbon-slide.next {
       this.cursor && this.cursor.hide();
 
       this.slide.fitObject();
+
+      this.reactive.trigger({
+        type      : 'panStart',
+        direction : this.panDirection,
+        element   : this.element
+      });
     }
 
     onPanMove(e: any) {
@@ -447,7 +456,6 @@ carbon-lightbox carbon-slide.next {
     }
 
     get isPannable() {
-
       let objectEl = this.slide.objectEl;
 
       return objectEl.classList.contains('pannable') || objectEl.hasAttribute('pannable');
@@ -971,8 +979,6 @@ carbon-lightbox carbon-slide.next {
       let a = { type: 'panstart' };
 
       Object.assign(a, e);
-
-      console.log('pan start!');
 
       this.reactive.trigger(a);
     }
