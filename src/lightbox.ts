@@ -1,19 +1,16 @@
 module Carbon {
-  document.addEventListener('keydown', e => {
-    if (!window.lightbox) return;
-
-    if (!window.lightbox.element.classList.contains('open')) return false;
-
-    switch (e.keyCode) {
-      case 39: window.lightbox.next(); break; // right
-      case 37: window.lightbox.prev(); break; // left
-    }
-  });
-
   function setStyle(element: HTMLElement, data: any) {
     for (var key of Object.keys(data)) {
       element.style[key] = data[key];
     }
+  }
+
+  function getEventPromise(el, name) {
+    return new Promise(function(resolve, reject) {
+      el.addEventListener(name, e => {
+        resolve();
+      }, { once: true });
+    });
   }
 
   const styles = 
@@ -62,7 +59,6 @@ carbon-lightbox img {
     viewport: Viewport;
     padding = 25;
 
-    item: LightboxItem;
     scale: number;
     origin: ClientRect;
         
@@ -111,13 +107,12 @@ carbon-lightbox img {
         this.options.easing = 'easeOutQuad';
       }
 
-
       if (!this.options.slideEasing) {
-        this.options.slideEasing = 'cubicBezier(.175,.885,.32,1)';
+        this.options.slideEasing = 'cubic-bezier(.175,.885,.32,1)';
       }
 
       if (!this.options.slideDuration) {
-        this.options.slideDuration = 400;
+        this.options.slideDuration = 500;
       }
       
       this.cursor = options.cursor;
@@ -205,7 +200,6 @@ carbon-lightbox img {
         return;
       }
 
-
       if (this.cursor) {
         this.cursor.show();
         this.cursor.mode = 'manual';
@@ -214,8 +208,7 @@ carbon-lightbox img {
         this.element.style.cursor = 'zoom-out';
       }
 
-      this.item = new LightboxItem(sourceElement);
-
+      let item = new LightboxItem(sourceElement);
 
       this.reactive.trigger({
         type    : 'open',
@@ -225,20 +218,19 @@ carbon-lightbox img {
 
       this.scale = 0;
       
-      let cloneEl = this.createClone(this.item);
+      let cloneEl = this.createClone(item);
 
-      this.slide = Slide.create(this.item); 
+      this.slide = Slide.create(item); 
 
       this.slides[this.slide.index] = this.slide;
 
       this.element.style.setProperty('--slide-index', this.slide.index.toString());
 
-      
       this.slide.element.appendChild(cloneEl);
 
-      this.viewport.element.appendChild(this.slide.element);
+      this.slideContainerEl.appendChild(this.slide.element);
 
-      this.calculateBox(this.item);
+      this.calculateBox(item);
 
       this.positionAndScaleToSourceElement(cloneEl);
 
@@ -254,7 +246,13 @@ carbon-lightbox img {
       
       await this.zoomIn();
       
-      this.appendSlides();
+      this.preloadSlides();
+    }
+
+    get item() {
+      if (!this.slide) return null;
+
+      return this.slide.item;
     }
 
     get hasPrevSlide() {
@@ -334,26 +332,22 @@ carbon-lightbox img {
     }
 
     async next() {
-      if (!this.hasNextSlide || this.slideAnimation) return;
+      if (!this.hasNextSlide || this.animating) return;
 
       this.item.showSource();
+      
+      for (var el of Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'))) {
+        el.style.transition = `transform ${this.options.slideDuration}ms ${this.options.slideEasing}`;
+        el.style.transform = `translateX(-100%)`;
+      }
+      
+      this.animating = true;
 
-      var slideEls = Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'));
-
-      this.slideAnimation = await anime({
-        targets    :   slideEls,
-        duration   :   this.options.slideDuration,
-        translateX :   - this.viewport.width,
-        easing     :   this.options.easing
-      });
-
-      await this.slideAnimation.finished;
+      await getEventPromise(this.slide.element, 'transitionend');
 
       this.slide.deactivate();
 
       this.slide = this.slides[this.slide.index + 1];
-
-      // this.slide.reset();
 
       this.element.style.setProperty('--slide-index', this.slide.index.toString());
 
@@ -361,29 +355,27 @@ carbon-lightbox img {
         slide && slide.reset();
       }
       
-      this.item = this.slide.item;
+      this.preloadSlides();
 
-      
-      this.appendSlides();
-
-      this.slideAnimation =  null;
+      this.animating = false;
 
       this.cursor && this.onCursorMove(this.cursor.lastEvent);
     }
 
+
     async prev() {
-      if (!this.hasPrevSlide || this.slideAnimation) return;
+      if (!this.hasPrevSlide || this.animating) return;
       
       this.item.showSource();
 
-      this.slideAnimation = await anime({
-        targets    :   this.element.querySelectorAll('carbon-slide'),
-        duration   :   this.options.slideDuration,
-        translateX :   this.viewport.width,
-        easing     :   this.options.easing
-      });
+      this.animating = true;
+      
+      for (var el of Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'))) {
+        el.style.transition = `transform ${this.options.slideDuration}ms ${this.options.slideEasing}`;
+        el.style.transform = `translateX(100%)`;
+      }
 
-      await this.slideAnimation.finished;
+      await getEventPromise(this.slide.element, 'transitionend');
 
       this.slide = this.slides[this.slide.index - 1];
 
@@ -393,11 +385,9 @@ carbon-lightbox img {
         slide && slide.reset();
       }
       
-      this.item = this.slide.item;
+      this.preloadSlides();
 
-      this.appendSlides();
-
-      this.slideAnimation =  null;
+      this.animating = false;
 
       this.cursor && this.onCursorMove(this.cursor.lastEvent);
     }
@@ -421,6 +411,11 @@ carbon-lightbox img {
         direction : this.panDirection,
         element   : this.element
       });
+
+      for (var slideEl of Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'))) {
+        slideEl.style.transition = null;
+      }
+
     }
 
     onPanMove(e: any) {
@@ -428,7 +423,6 @@ carbon-lightbox img {
         return;
       }
       
-      this.slide.element.style.transition = null;
       
       let transform = '';
 
@@ -447,7 +441,6 @@ carbon-lightbox img {
 
       // TODO: Request animation frame
 
-      this.slide.element.style.transform = transform;
 
       // translate the prev and next slides by the same amount
 
@@ -556,8 +549,8 @@ carbon-lightbox img {
       if (cloneEl.tagName == 'CARBON-IMAGE' && cloneEl.querySelector('img,video')) {
         cloneEl = cloneEl.querySelector('img,video');
 
-        cloneEl.width = this.item.width;
-        cloneEl.height = this.item.height;
+        cloneEl.width = item.width;
+        cloneEl.height = item.height;
     
         cloneEl.removeAttribute('data-src');
         cloneEl.removeAttribute('data-srcset');
@@ -616,7 +609,7 @@ carbon-lightbox img {
     }
 
     onScroll() {
-      if (!this.item) return;
+      if (!this.slide) return;
 
       if (this.state == 'opening') {
         return;
@@ -691,29 +684,21 @@ carbon-lightbox img {
    
       return deferred;
     }
-
-    // TODO: Get the surface color of the current item...
     
-    appendSlides() {      
-  
+    preloadSlides() {      
       let prevItem = this.getItem(this.item.index - 1);
       let nextItem = this.getItem(this.item.index + 1);
       
-      if (prevItem && this.slides[prevItem.index] === undefined) {
-        
+      if (prevItem && this.slides[prevItem.index] === undefined) {        
         let prevSlide = this.buildSlide(prevItem);
 
         this.slides[prevItem.index] = prevSlide;
-
-        this.viewport.element.appendChild(prevSlide.element);
       }
 
       if (nextItem && this.slides[nextItem.index] === undefined) {
         let nextSlide = this.buildSlide(nextItem);
 
-        this.slides[nextItem.index] = nextSlide;
-        
-        this.viewport.element.appendChild(nextSlide.element);
+        this.slides[nextItem.index] = nextSlide;        
       }
     }
 
@@ -727,16 +712,20 @@ carbon-lightbox img {
 
       slide.fitObject();
 
+      this.slideContainerEl.appendChild(slide.element);
+
       return slide;
     }
 
     resetSlides() {
-      anime({
-        targets    :   this.element.querySelectorAll('carbon-slide'),
-        duration   :   250,
-        translateX :   0,
-        easing     :   this.options.easing
-      });
+
+      var slideEls = Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'));
+
+      for (var el of slideEls) {
+        el.style.transition = `transform 200ms ${this.easing}`;
+        el.style.transform = `translateX(0)`;
+      }
+
     }
 
     private fit(element: Size, box: Size) : Size {
@@ -863,12 +852,7 @@ carbon-lightbox img {
 
       let originBox = this.item.originBox;
 
-      let sourceImg = this.slide.item.sourceElement.closest('img') || this.slide.item.sourceElement.querySelector('img');
-      
-      if (sourceImg) {
-        this.slide.objectEl.removeAttribute('srcset');
-        this.slide.objectEl.src = sourceImg.src;
-      }
+      this.slide.resetSrc();
 
       this.animation = anime({
         targets: objectEl,
@@ -951,6 +935,10 @@ carbon-lightbox img {
       document.body.appendChild(element);
 
       return element;
+    }
+
+    get slideContainerEl() {
+      return this.viewport.element;
     }
   }  
 
@@ -1108,6 +1096,16 @@ carbon-lightbox img {
 
     reset() {
       this.element.style.transform = null;
+      this.element.style.transition = null;
+    }
+
+    resetSrc() {
+      let sourceImg = this.item.sourceElement.closest('img') || this.item.sourceElement.querySelector('img');
+      
+      if (sourceImg) {
+        this.objectEl.removeAttribute('srcset');
+        this.objectEl.src = sourceImg.src;
+      }
     }
 
     get index() { 
