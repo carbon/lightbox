@@ -46,8 +46,6 @@ carbon-lightbox img {
   -webkit-user-drag: none;
 }
 `;
-
-
   
   export class Lightbox {
     static instance: Lightbox;
@@ -105,17 +103,7 @@ carbon-lightbox img {
 
       window.addEventListener('scroll', this.onScroll.bind(this), false);
 
-      document.addEventListener('keyup', e => {
-        if (e.keyCode !== 27) return; // escape        
-
-        if (this.pannable && this.pannable.enabled) {
-          this.pannable.reset();
-          this.pannable.disable();
-        }
-        else {
-          this.zoomOut();
-        }
-      });
+      document.addEventListener('keydown', this.onKeyDown.bind(this));
 
       this.options = options || { };
 
@@ -157,7 +145,30 @@ carbon-lightbox img {
       return this.reactive.on(type, callback);
     }
 
+    onKeyDown(e: KeyboardEvent) {
+      if (!this.element.classList.contains('open')) return;
+
+      if (this.isSlideshow) {
+        switch (e.keyCode) {
+          case 39: this.next(); break; // right
+          case 37: this.prev(); break; // left
+        }
+      }
+  
+      if (e.keyCode !== 27) return; // escape        
+
+      if (this.pannable && this.pannable.enabled) {
+        this.pannable.reset();
+        this.pannable.disable();
+      }
+      else {
+        this.zoomOut({ });
+      }
+    }
+
     async onCursorMove(e) {
+      if (!e) return;
+
       if (!this.visible || this.state == 'opening') return;
 
       let distanceFromRight = document.body.clientWidth - e.clientX;
@@ -356,7 +367,8 @@ carbon-lightbox img {
       this.appendSlides();
 
       this.slideAnimation =  null;
-      
+
+      this.cursor && this.onCursorMove(this.cursor.lastEvent);
     }
 
     async prev() {
@@ -386,8 +398,9 @@ carbon-lightbox img {
       this.appendSlides();
 
       this.slideAnimation =  null;
-    }
 
+      this.cursor && this.onCursorMove(this.cursor.lastEvent);
+    }
     
     onPanStart(e: any) {
       if (this.animating || this.pannable.enabled) return;
