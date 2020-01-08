@@ -213,7 +213,7 @@ carbon-lightbox img {
       this.reactive.trigger({
         type    : 'open',
         element : this.element,
-        item    : this.item
+        item    : item
       });
 
       this.scale = 0;
