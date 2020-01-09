@@ -187,7 +187,10 @@ carbon-lightbox img {
 
       this.cursor.show();
 
-      if (e.target && e.target.closest('img')) {
+      if (e.target && e.target.closest('on-click')) {
+        this.cursor.hide();
+      }
+      else if (e.target && e.target.closest('img')) {
         await this.cursor.toZoomOut();
       }
       else {
@@ -458,17 +461,22 @@ carbon-lightbox img {
     async onTap(e: any) {
       if (this.animating) return;
 
-      if (this.cursor && (this.cursor.type == 'right-arrow' || this.cursor.type == 'left-arrow')) {
-
+      if (this.cursor) {
+        
         if (this.cursor.type == 'right-arrow') {
           this.next();
+          return;
         }
-        else if (this.cursor.type == 'left-arrow') {
+        
+        if (this.cursor.type == 'left-arrow') {
           this.prev();
+          return;
         }
-
-        return;
       }
+
+      console.log(e.taget);
+
+      if (e.target, e.target.closest('[on-click]')) return;
       
       if (this.didPan) {
         this.didPan = false;
