@@ -657,7 +657,7 @@ carbon-lightbox img {
         easing     :   'easeOutQuad'
       });
 
-      let otherImg = objectEl.tagName == 'IMG' || objectEl.tagName == 'VIDEO' 
+      let otherImg = objectEl.tagName == 'IMG'
         ? objectEl as HTMLImageElement
         : objectEl.querySelector('img');
   
@@ -707,8 +707,10 @@ carbon-lightbox img {
       
       slide.element.appendChild(this.createClone(item));
       
-      slide.objectEl.src = item.url;
-      slide.objectEl.srcset = item.url + ' 1x';
+      if (slide.objectEl.tagName == 'IMG') {
+        slide.objectEl.src = item.url;
+        slide.objectEl.srcset = item.url + ' 1x';
+      }
 
       slide.fitObject();
 
