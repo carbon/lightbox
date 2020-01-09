@@ -72,7 +72,6 @@ carbon-lightbox img {
     
     pannable: Pannable;
         
-    animationDuration = 200;
     state = 'closed';
 
     easing = 'cubic-bezier(.175,.885,.32,1)';
@@ -113,6 +112,22 @@ carbon-lightbox img {
 
       if (!this.options.slideDuration) {
         this.options.slideDuration = 500;
+      }
+      
+      if (!this.options.zoomInDuration) {
+        this.options.zoomInDuration = 200;
+      }
+
+      if (!this.options.zoomInEasing) {
+        this.options.zoomInEasing = 'easeOutQuad';
+      }
+
+      if (!this.options.zoomOutDuration) {
+        this.options.zoomOutDuration = 200;
+      }
+
+      if (!this.options.zoomOutEasing) {
+        this.options.zoomOutEasing = 'easeOutQuad';
       }
       
       this.cursor = options.cursor;
@@ -247,7 +262,7 @@ carbon-lightbox img {
 
       this.item.hideSource();
       
-      await this.zoomIn();
+      await this.zoomIn(this.options.zoomInDuration);
       
       this.preloadSlides();
     }
@@ -459,10 +474,17 @@ carbon-lightbox img {
     }
     
     async onTap(e: any) {
-      if (this.animating) return;
+      if (this.animating && this.state !== 'opening') return;
+
+      if (this.animating) {
+        this.animation.pause();
+        
+        this.zoomOut();
+
+        return;
+      }
 
       if (this.cursor) {
-        
         if (this.cursor.type == 'right-arrow') {
           this.next();
           return;
@@ -473,8 +495,6 @@ carbon-lightbox img {
           return;
         }
       }
-
-      console.log(e.taget);
 
       if (e.target, e.target.closest('[on-click]')) return;
       
@@ -662,7 +682,7 @@ carbon-lightbox img {
         translateX : [ originBox.left, this.fittedBox.left ],
         translateY : [ originBox.top, this.fittedBox.top ],
         scale      : [ 1, this.scale ],
-        easing     :   'easeOutQuad'
+        easing     :   this.options.zoomInEasing,
       });
 
       let otherImg = objectEl.tagName == 'IMG'
@@ -794,7 +814,7 @@ carbon-lightbox img {
       this.viewport.element.innerHTML = '';
     }
     
-    async zoomOut(options) {
+    async zoomOut(options?: any) {
       if (!this.item) return;
 
       if(!this.visible) return;
@@ -843,7 +863,7 @@ carbon-lightbox img {
 
       this.animation && this.animation.pause();
       
-      await this.animateBackToOrigin(this.animationDuration).finished;
+      await this.animateBackToOrigin(this.options.zoomOutDuration, this.options.zoomOutEasing).finished;
 
       this.animating = false;
       this.animation = null;
@@ -851,7 +871,7 @@ carbon-lightbox img {
       this.onClosed();
     }
 
-    animateBackToOrigin(duration, easing = 'easeOutQuad') {
+    animateBackToOrigin(duration: number, easing = 'easeOutQuad') {
       let objectEl = this.slide.objectEl;
       
       this.animation && this.animation.pause();
