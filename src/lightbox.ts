@@ -582,6 +582,8 @@ carbon-lightbox img {
     
         cloneEl.removeAttribute('data-src');
         cloneEl.removeAttribute('data-srcset');
+
+        cloneEl.style.imageRendering = 'pixelated';
       }
 
       cloneEl.removeAttribute('style');
@@ -685,8 +687,8 @@ carbon-lightbox img {
         easing     :   this.options.zoomInEasing,
       });
 
-      let otherImg = objectEl.tagName == 'IMG'
-        ? objectEl as HTMLImageElement
+      let otherImg: HTMLImageElement = objectEl instanceof HTMLImageElement
+        ? objectEl
         : objectEl.querySelector('img');
   
       await this.animation.finished;
@@ -704,6 +706,8 @@ carbon-lightbox img {
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
         otherImg.srcset = this.item.url + ' 1x';
+        otherImg.style.imageRendering = null;
+
       }
       
       deferred.resolve(true);
@@ -815,7 +819,7 @@ carbon-lightbox img {
     }
     
     async zoomOut(options?: any) {
-      if (!this.item) return;
+      if (!this.slide) return;
 
       if(!this.visible) return;
 
@@ -824,13 +828,12 @@ carbon-lightbox img {
       this.state = 'closing';
       this.element.classList.add('closing');
 
-      if (this.cursor) {        
-        this.cursor.scale(this.cursor.defaultScale);                 
-      }
-
+      this.cursor && this.cursor.scale(this.cursor.defaultScale);                 
+    
       this.reactive.trigger({
-        type: 'closing',
-        element: this.element
+        type    : 'closing',
+        element : this.element,
+        item    : this.slide.item
       });
       
       this.element.style.cursor = null;
@@ -841,6 +844,8 @@ carbon-lightbox img {
       let originBox = this.item.originBox;
 
       let offsetY = options.offsetY || 0;
+
+      this.slide.resetObjectSrc();
 
       setStyle(this.slide.objectEl, {
         display: 'block',
@@ -882,26 +887,25 @@ carbon-lightbox img {
 
       let originBox = this.item.originBox;
 
-      this.slide.resetSrc();
+      let targets = [ objectEl ];
 
       this.animation = anime({
-        targets: objectEl,
-        duration: duration,
-        scale: originBox.width / objectEl.clientWidth,
-        translateX: originBox.left,
-        translateY: originBox.top,
+        targets    : targets,
+        duration   : duration,
+        scale      : originBox.width / objectEl.clientWidth,
+        translateX : originBox.left,
+        translateY : originBox.top,
         update: (anim) => { 
           let scrollY = this.scrollTop - document.body.scrollTop;
 
           let val = parseFloat(anime.get(objectEl, 'translateY', 'px'));
 
-          anime.set([ objectEl ], { 
+          anime.set(targets, { 
             translateY: val + scrollY
           });
         },
         easing: easing
       });
-
 
       return this.animation;
     }
@@ -1129,12 +1133,14 @@ carbon-lightbox img {
       this.element.style.transition = null;
     }
 
-    resetSrc() {
+    resetObjectSrc() {
       let sourceImg = this.item.sourceElement.closest('img') || this.item.sourceElement.querySelector('img');
       
-      if (sourceImg) {
+      if (sourceImg && this.objectEl instanceof HTMLImageElement) {
         this.objectEl.removeAttribute('srcset');
         this.objectEl.src = sourceImg.src;
+        this.objectEl.srcset = sourceImg.src + ' 1x';
+        this.objectEl.style.imageRendering = 'pixelated';
       }
     }
 
