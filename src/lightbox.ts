@@ -264,7 +264,7 @@ carbon-lightbox img {
       
       await this.zoomIn(this.options.zoomInDuration);
       
-      this.preloadSlides();
+      this.isSlideshow && this.preloadSlides();
     }
 
     get item() {
@@ -299,19 +299,21 @@ carbon-lightbox img {
 
       if (this.pannable.enabled || this.pannable.dragging) return;
 
-      var a = e.deltaX / this.viewport.width;
-
       this.didPan = true;
 
-      if (a < -0.3 && this.panDirection === 2 && this.hasNextSlide) { // right
-        this.next();
+      if (this.isSlideshow) {
+        let a = e.deltaX / this.viewport.width;
 
-        return;
-      }
-      else if ( a > 0.3 && this.panDirection === 4 && this.hasPrevSlide) { // left
-        this.prev();
+        if (a < -0.3 && this.panDirection === 2 && this.hasNextSlide) { // right
+          this.next();
 
-        return;
+          return;
+        }
+        else if ( a > 0.3 && this.panDirection === 4 && this.hasPrevSlide) { // left
+          this.prev();
+
+          return;
+        }
       }
 
       this.cursor && this.cursor.show();
@@ -439,9 +441,14 @@ carbon-lightbox img {
     onPanMove(e: any) {
       if (this.animating || this.pannable.enabled) { 
         return;
+      }      
+
+      
+      if ((this.panDirection == 4 || this.panDirection == 2) && !this.isSlideshow) {
+        return;
       }
       
-      
+
       let transform = '';
 
       if (this.panDirection == 16 || this.panDirection == 8) {
