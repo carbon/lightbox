@@ -138,11 +138,10 @@ carbon-lightbox img {
         this.cursor.on('move', this.onCursorMove.bind(this));
       }
 
-      this.viewport.element.addEventListener('click', this.onTap.bind(this), true);
-
       this.viewport.on('panstart', this.onPanStart.bind(this));
       this.viewport.on('panmove', this.onPanMove.bind(this));
       this.viewport.on('panend', this.onPanEnd.bind(this));
+      this.viewport.on('tap', this.onTap.bind(this));
 
       let styleEl = document.createElement('style');
 
@@ -176,24 +175,24 @@ carbon-lightbox img {
       }
     }
 
-    async onCursorMove(e) {
-      if (!e) return;
-
+    async onCursorMove(e: any) {
       if (!this.visible || this.state == 'opening') return;
 
       let distanceFromRight = document.body.clientWidth - e.clientX;
       let distanceFromBottom = document.body.clientHeight- e.clientY;
 
-      let nearTop =  e.clientY < 200;
-      let nearBottom = distanceFromBottom < 200;
+      let nearTop = false; // e.clientY < 200;
+      let nearBottom = false; // distanceFromBottom < 200;
 
+      const edgeDistance = this.viewport.width * 0.2; // 300;
+      
       if (this.isSlideshow) {
-        if (distanceFromRight < 300 && !nearTop && !nearBottom && this.hasNextSlide) {
+        if (distanceFromRight < edgeDistance && !nearTop && !nearBottom && this.hasNextSlide) {
           await this.cursor.toRightArrow();
         
           return;
         }
-        else if (e.clientX < 300 && !nearTop && !nearBottom && this.hasPrevSlide) {
+        else if (e.clientX < edgeDistance && !nearTop && !nearBottom && this.hasPrevSlide) {
           await this.cursor.toLeftArrow();        
         
           return;
@@ -205,12 +204,17 @@ carbon-lightbox img {
       if (e.target && e.target.closest('on-click')) {
         this.cursor.hide();
       }
+      else {
+        await this.cursor.toZoomOut();
+      }
+      /*
       else if (e.target && e.target.closest('img')) {
         await this.cursor.toZoomOut();
       }
       else {
         await this.cursor.toClose();
       }
+      */
     }
 
     async open(sourceElement: HTMLElement) {      
@@ -382,7 +386,6 @@ carbon-lightbox img {
       this.cursor && this.onCursorMove(this.cursor.lastEvent);
     }
 
-
     async prev() {
       if (!this.hasPrevSlide || this.animating) return;
       
@@ -435,7 +438,6 @@ carbon-lightbox img {
       for (var slideEl of Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'))) {
         slideEl.style.transition = null;
       }
-
     }
 
     onPanMove(e: any) {
@@ -443,11 +445,9 @@ carbon-lightbox img {
         return;
       }      
 
-      
       if ((this.panDirection == 4 || this.panDirection == 2) && !this.isSlideshow) {
         return;
       }
-      
 
       let transform = '';
 
@@ -464,11 +464,6 @@ carbon-lightbox img {
         case 2: transform = `translateX(${e.deltaX}px)`; break;
       }
 
-      // TODO: Request animation frame
-
-
-      // translate the prev and next slides by the same amount
-
       for (var slideEl of Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'))) {
         slideEl.style.transform = transform;
       }
@@ -480,7 +475,7 @@ carbon-lightbox img {
       return objectEl.classList.contains('pannable') || objectEl.hasAttribute('pannable');
     }
     
-    async onTap(e: any) {
+    async onTap(e: any) {      
       if (this.animating && this.state !== 'opening') return;
 
       if (this.animating) {
@@ -565,14 +560,14 @@ carbon-lightbox img {
 
       objectEl.style.transform = `scale(1) translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px)`;
       
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         objectEl.style.transition = `transform 250ms ${this.easing}`;
 
         this.pannable.content._scale = this.item.width / this.fittedBox.width;
 
         this.pannable.viewport.centerAt(anchor);
 
-      }, 15);
+      });
     }
 
     createClone(item: LightboxItem) {      
@@ -1006,18 +1001,24 @@ carbon-lightbox img {
 			this.gestures = new Carbon.Gestures.Manager(this.element);
 
       this.gestures.add(new Carbon.Gestures.Pan({ threshold: 3, pointers: 0 }));
+      this.gestures.add(new Carbon.Gestures.Tap());
 
       this.gestures.on("pinchstart pinchmove", this.onPinch.bind(this));
 			this.gestures.on("panstart", this.onPanStart.bind(this));
 			this.gestures.on("panmove", this.onPanMove.bind(this));
       this.gestures.on("panend", this.onPanEnd.bind(this));
+      this.gestures.on("tap", this.onTap.bind(this));
     }
 
-    onPinch(e) {
+    onPinch(e: any) {
       this.reactive.trigger('pinch', e);
     }
 
-    onPanStart(e) {
+    onTap(e: any) {
+      this.reactive.trigger('tap', e);
+    }
+
+    onPanStart(e: any) {
       let a = { type: 'panstart' };
 
       Object.assign(a, e);
@@ -1492,7 +1493,6 @@ Carbon.controllers.set('zoom', {
   }
 });
 
-
 interface Size {
   width: number;
   height: number;
@@ -1504,9 +1504,3 @@ interface Box {
   top: number;
   left: number;
 }
-
-// Slides
-
-// - Audio
-// - Image
-// - Video
