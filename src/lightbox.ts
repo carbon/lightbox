@@ -130,7 +130,7 @@ carbon-lightbox img {
         this.options.zoomOutEasing = 'easeOutQuad';
       }
 
-      if (!this.options.topCarveOutForClose) {
+      if (!this.options.topEdgeCarveOutForClose) {
         this.options.topEdgeCarveOutForClose = 0.1;
       }
 
