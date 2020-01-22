@@ -129,6 +129,14 @@ carbon-lightbox img {
       if (!this.options.zoomOutEasing) {
         this.options.zoomOutEasing = 'easeOutQuad';
       }
+
+      if (!this.options.topCarveOutForClose) {
+        this.options.topEdgeCarveOutForClose = 0.1;
+      }
+
+      if (!this.options.flipperCarveOut) {
+        this.options.flipperCarveOut = 0.2;
+      }
       
       this.cursor = options.cursor;
       
@@ -179,20 +187,26 @@ carbon-lightbox img {
       if (!this.visible || this.state == 'opening') return;
 
       let distanceFromRight = document.body.clientWidth - e.clientX;
-      let distanceFromBottom = document.body.clientHeight- e.clientY;
+      let distanceFromBottom = document.body.clientHeight - e.clientY;
 
-      let nearTop = false; // e.clientY < 200;
-      let nearBottom = false; // distanceFromBottom < 200;
+      var topEdgeCarveOutPx = this.options.topEdgeCarveOutForClose > 1 
+        ? this.options.topEdgeCarveOutForClose 
+        : this.options.topEdgeCarveOutForClose * this.viewport.height;
+    
+      let nearTop = e.clientY < topEdgeCarveOutPx;
+      let nearBottom = distanceFromBottom < 200;
 
-      const edgeDistance = this.viewport.width * 0.2; // 300;
+      const flipperCarveOutPx = this.options.flipperCarveOut > 1 
+        ? this.options.flipperCarveOut
+        : this.options.flipperCarveOut * this.viewport.width;
       
       if (this.isSlideshow) {
-        if (distanceFromRight < edgeDistance && !nearTop && !nearBottom && this.hasNextSlide) {
+        if (distanceFromRight < flipperCarveOutPx && !nearTop && !nearBottom && this.hasNextSlide) {
           await this.cursor.toRightArrow();
         
           return;
         }
-        else if (e.clientX < edgeDistance && !nearTop && !nearBottom && this.hasPrevSlide) {
+        else if (e.clientX < flipperCarveOutPx && !nearTop && !nearBottom && this.hasPrevSlide) {
           await this.cursor.toLeftArrow();        
         
           return;
