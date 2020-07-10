@@ -21,9 +21,6 @@ carbon-lightbox {
 }
 
 carbon-lightbox carbon-slide {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: absolute;
   top: 0;
   left: 0;
@@ -31,17 +28,44 @@ carbon-lightbox carbon-slide {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  justify-content: center;
   user-select: none;
   -webkit-user-select: none;
   transform-origin: 0 0;
   left: calc((var(--index, 0) * 100%) - (var(--slide-index, 0) * 100%));
 }
 
+carbon-lightbox carbon-slide .media-container {
+  display: block;
+  top: 0;
+  left: 0;
+  position: absolute;
+}
+
+
+carbon-lightbox carbon-slide .caption {
+  display: block;
+  top: 0;
+  left: 0;
+  position: absolute;
+  z-index: 100;
+  width: 100%;
+  text-align:center;
+  cursor: auto;
+  margin-top: 10px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 carbon-lightbox img {
   user-drag: none;
   -webkit-user-drag: none;
 }
+
+carbon-lightbox.closing carbon-slide .caption {
+  display: none;
+}
+
+
 `;
   
   export class Lightbox {
@@ -69,14 +93,13 @@ carbon-lightbox img {
     visible = false;
     animating = false;
     options: any;
-    
-    pannable: Pannable;
-        
+            
     state = 'closed';
 
     easing = 'cubic-bezier(.175,.885,.32,1)';
 
     didPan = false;
+    noPan = false;
     animation: any;
     panDirection: number;
     cursor: Cursor;
@@ -87,6 +110,7 @@ carbon-lightbox img {
     slide: Slide;
 
     didScroll = false;
+    raf: any;
 
     // buffer
     slides: Array<Slide> = [];
@@ -97,6 +121,7 @@ carbon-lightbox img {
       this.viewport = new Viewport(this.element.querySelector('.viewport'));
 
       window.addEventListener('scroll', this.onScroll.bind(this), false);
+      window.addEventListener('resize', this.onResize.bind(this), false);
 
       document.addEventListener('keydown', this.onKeyDown.bind(this));
 
@@ -138,7 +163,7 @@ carbon-lightbox img {
         this.options.flipperCarveOut = 0.2;
       }
       
-      this.cursor = options.cursor;
+      this.cursor = this.options.cursor;
       
       if (this.cursor) {
         this.viewport.element.style.cursor = 'none';
@@ -174,13 +199,7 @@ carbon-lightbox img {
   
       if (e.keyCode !== 27) return; // escape        
 
-      if (this.pannable && this.pannable.enabled) {
-        this.pannable.reset();
-        this.pannable.disable();
-      }
-      else {
-        this.zoomOut({ });
-      }
+      this.zoomOut({ });
     }
 
     async onCursorMove(e: any) {
@@ -262,11 +281,11 @@ carbon-lightbox img {
 
       this.element.style.setProperty('--slide-index', this.slide.index.toString());
 
-      this.slide.element.appendChild(cloneEl);
-
+      this.slide.setObjectElement(cloneEl);
+      
       this.slideContainerEl.appendChild(this.slide.element);
 
-      this.calculateBox(item);
+      this.setBox(item, this.slide.captionHeight);
 
       this.positionAndScaleToSourceElement(cloneEl);
 
@@ -275,8 +294,6 @@ carbon-lightbox img {
       this.element.classList.add('open');
       this.element.classList.remove('closed');
       this.element.style.visibility = 'visible';
-
-      this.pannable = new Carbon.Pannable(cloneEl, this.viewport);
 
       this.item.hideSource();
       
@@ -298,6 +315,7 @@ carbon-lightbox img {
     get hasNextSlide() {
       return this.slides[this.slide.item.index + 1] !== undefined;
     }
+    
 
     getItem(index: number) {
       if (index < 0) return false;
@@ -315,8 +333,7 @@ carbon-lightbox img {
         element: this.element
       });
 
-      if (this.pannable.enabled || this.pannable.dragging) return;
-
+      this.noPan = false;
       this.didPan = true;
 
       if (this.isSlideshow) {
@@ -430,8 +447,15 @@ carbon-lightbox img {
     }
     
     onPanStart(e: any) {
-      if (this.animating || this.pannable.enabled) return;
+      if (e.target && e.target.closest('.caption')) {
+        this.noPan = true;
 
+        return false;
+      } 
+
+      if (this.animating) return;
+
+    
       // 16 = down
       // 8 = up
       // 4 = right
@@ -441,7 +465,6 @@ carbon-lightbox img {
 
       this.cursor && this.cursor.hide();
 
-      this.slide.fitObject();
 
       this.reactive.trigger({
         type      : 'panStart',
@@ -455,7 +478,7 @@ carbon-lightbox img {
     }
 
     onPanMove(e: any) {
-      if (this.animating || this.pannable.enabled) { 
+      if (this.animating || this.noPan) { 
         return;
       }      
 
@@ -483,14 +506,16 @@ carbon-lightbox img {
       }
     }
 
-    get isPannable() {
-      let objectEl = this.slide.objectEl;
-
-      return objectEl.classList.contains('pannable') || objectEl.hasAttribute('pannable');
-    }
-    
     async onTap(e: any) {      
       if (this.animating && this.state !== 'opening') return;
+
+      console.log('TAP!', e.target);
+      if (e.target && e.target.closest('.caption')) {
+        
+        console.log('caption!');
+
+        return false;
+      } 
 
       if (this.animating) {
         this.animation.pause();
@@ -520,68 +545,7 @@ carbon-lightbox img {
         return;
       }
 
-      if (this.pannable.dragging)  {
-        return;
-      }
-
-      let maxScale = this.item.width / this.fittedBox.width;
-
-      let canPan = this.isPannable && maxScale > 1;
-      
-      if (!canPan) {
-        this.zoomOut();
-
-        return;
-      }
-
-      let objectEl = this.slide.objectEl;
-
-      if (this.pannable.enabled) {
-        this.pannable.content._scale = 1;        
-        objectEl.style.transition = `transform 250ms ${this.easing}`;
-        objectEl.style.transform = `scale(1) translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px)`;
-        
-        this.pannable.disable();
-  
-        this.state = 'opened';
-
-        return;
-      }
-
-      this.state = 'panning';
-
-      this.slide.fitObject();
-
-      this.calculateBox(this.item);
-
-      let l = e.clientX - this.fittedBox.left;
-      let t = e.clientY - this.fittedBox.top;
-  
-      let anchor = { 
-        x: (l / this.fittedBox.width), 
-        y: (t / this.fittedBox.height)  
-      };
-      
-      this.pannable.enable();
-
-      objectEl.style.width = this.fittedBox.width + 'px';
-      objectEl.style.height = this.fittedBox.height + 'px';
-      objectEl.style.position = 'absolute';
-      objectEl.style.top = '0';
-      objectEl.style.left = '0';
-      objectEl.style.transition = null;
-      objectEl.style.transformOrigin = '0px 0px'; // top left
-
-      objectEl.style.transform = `scale(1) translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top}px)`;
-      
-      requestAnimationFrame(() => {
-        objectEl.style.transition = `transform 250ms ${this.easing}`;
-
-        this.pannable.content._scale = this.item.width / this.fittedBox.width;
-
-        this.pannable.viewport.centerAt(anchor);
-
-      });
+      this.zoomOut();
     }
 
     createClone(item: LightboxItem) {      
@@ -628,30 +592,45 @@ carbon-lightbox img {
       });
     }
 
-    calculateBox(elementSize: Size) {
+    setBox(element: Size, captionHeight = 0) {
       let originBox = this.item.originBox;
 
-      let size = this.fit(elementSize, { 
+      console.log(element, captionHeight);
+
+      this.fittedBox = this.fitToViewport(element, captionHeight);
+
+      this.slide.fitCaption(this);
+      
+      this.scale = this.fittedBox.width / originBox.width;
+    }
+
+    fitToViewport(item: Size, captionHeight = 0) {
+
+      let vh = this.viewport.innerHeight - captionHeight;
+      let wh = this.height - captionHeight;
+      let ww = this.width;
+
+      let size = this.fit(item, { 
         width: this.viewport.innerWidth,
-        height: this.viewport.innerHeight 
+        height: vh
       });
 
-      this.fittedBox = {
+      let box = {
         width  : size.width,
         height : size.height,
-        top    : (this.height - size.height) / 2,
-        left   : (this.width - size.width) / 2
+        top    : (wh - size.height) / 2,
+        left   : (ww - size.width) / 2
       };
 
-      if (elementSize.top) {
-        this.fittedBox.top = elementSize.top;
+      if (item.top) {
+        box.top = item.top;
       }
 
-      if (elementSize.left) {
-        this.fittedBox.left = elementSize.left;
+      if (item.left) {
+        box.left = item.left;
       }
 
-      this.scale = this.fittedBox.width / originBox.width;
+      return box;
     }
 
     onScroll() {
@@ -664,6 +643,19 @@ carbon-lightbox img {
       if (this.visible && Math.abs(this.scrollTop - window.scrollY) > 15) {
         this.zoomOut();
       }
+    }
+
+    onResize() {
+      this.raf && window.cancelAnimationFrame(this.raf);
+
+      let base = this;
+
+      this.raf = window.requestAnimationFrame(() => {
+        for (var slide of this.slides) {
+
+          slide && slide.fit(base);
+        }
+      });
     }
 
     async zoomIn(duration = 200) {
@@ -715,15 +707,10 @@ carbon-lightbox img {
       this.state = 'opened';
       
       if (otherImg) {
-        otherImg.onload = () => {
-          this.state == 'opened' && this.slide.fitObject();
-        };
-
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
         otherImg.srcset = this.item.url + ' 1x';
         otherImg.style.imageRendering = null;
-
       }
       
       deferred.resolve(true);
@@ -753,29 +740,30 @@ carbon-lightbox img {
     buildSlide(item: LightboxItem) {
       let slide = Slide.create(item); 
       
-      slide.element.appendChild(this.createClone(item));
+      let objectEl = this.createClone(item);
+
+      slide.setObjectElement(objectEl);
       
       if (slide.objectEl.tagName == 'IMG') {
         slide.objectEl.src = item.url;
         slide.objectEl.srcset = item.url + ' 1x';
       }
 
-      slide.fitObject();
 
       this.slideContainerEl.appendChild(slide.element);
+
+      slide.fit(this);
 
       return slide;
     }
 
     resetSlides() {
-
       var slideEls = Array.from<HTMLElement>(this.element.querySelectorAll('carbon-slide'));
 
       for (var el of slideEls) {
         el.style.transition = `transform 200ms ${this.easing}`;
         el.style.transform = `translateX(0)`;
       }
-
     }
 
     private fit(element: Size, box: Size) : Size {
@@ -854,28 +842,8 @@ carbon-lightbox img {
       
       this.element.style.cursor = null;
 
-      this.calculateBox(this.item);
+      this.setBox(this.item, this.slide.captionHeight);
       
-      // prepare for animation ---
-      let originBox = this.item.originBox;
-
-      let offsetY = options.offsetY || 0;
-
-      this.slide.resetObjectSrc();
-
-      setStyle(this.slide.objectEl, {
-        display: 'block',
-        position: 'absolute',
-        top: '0',
-        left: '0',
-        width: originBox.width  + 'px',
-        height: originBox.height + 'px',
-        transformOrigin: 'left top',
-        transition: null,
-        maxHeight: null,
-        maxWidth: null,
-        transform: `translateX(${this.fittedBox.left}px) translateY(${this.fittedBox.top + offsetY}px) scale(${this.scale})`
-      });
       
       this.visible = false;
       this.animating = true;
@@ -897,7 +865,7 @@ carbon-lightbox img {
       
       this.animation && this.animation.pause();
       
-      this.calculateBox(objectEl.getBoundingClientRect());
+      this.setBox(objectEl.getBoundingClientRect(), this.slide.captionHeight);
 
       this.scrollTop = document.body.scrollTop;
 
@@ -1139,9 +1107,11 @@ carbon-lightbox img {
   //   carbon-slide.next
 
   class Slide {
-    item    : LightboxItem;
-    element : HTMLElement;
-    boxEl   : HTMLElement;
+    item      : LightboxItem;
+    element   : HTMLElement;
+    boxEl     : HTMLElement;
+    objectEl  : HTMLElement;
+    captionEl : HTMLElement;
 
     x = 0;
     y = 0;
@@ -1150,66 +1120,80 @@ carbon-lightbox img {
       this.element = element;
     }
 
+    get mediaContainerEl() {
+      return this.element.querySelector('.media-container');
+    }
+
     reset() {
       this.element.style.transform = null;
       this.element.style.transition = null;
     }
 
-    resetObjectSrc() {
-      let sourceImg = this.item.sourceElement.closest('img') || this.item.sourceElement.querySelector('img');
-      
-      if (sourceImg && this.objectEl instanceof HTMLImageElement) {
-        this.objectEl.removeAttribute('srcset');
-        this.objectEl.src = sourceImg.src;
-        this.objectEl.srcset = sourceImg.src + ' 1x';
-        this.objectEl.style.imageRendering = 'pixelated';
-      }
-    }
+    setObjectElement(objectEl: HTMLElement) {
+      this.objectEl = objectEl;
 
+      this.mediaContainerEl.innerHTML = '';
+
+      this.mediaContainerEl.appendChild(objectEl);
+    }
+    
     get index() { 
       return this.item.index;
     }
 
-    // Pan?
+    deactivate() { }
 
-    deactivate() {
-
-    }
-
-    activate() {
-
-    }
+    activate() { }
 
     destroy() {
+      this.item = null;
+      this.objectEl = null;
       this.element.remove();
     }
 
-    get objectEl() {
-      return this.element.querySelector('.clone') as HTMLElement;
+    fit(lightbox: Lightbox) {
+      let box = lightbox.fitToViewport(this.item, this.captionHeight);
+      
+      let originBox = this.item.originBox;
+
+      let scale = box.width / originBox.width;  
+
+
+      
+      setStyle(this.objectEl, {
+        display          : 'block',
+        position         : 'absolute',
+        top              : '0',
+        left             : '0',
+        width            : originBox.width  + 'px',
+        height           : originBox.height + 'px',
+        transformOrigin  : 'left top',
+        transition       : null,
+        maxHeight        : null,
+        maxWidth         : null,
+        transform        : `translateX(${box.left}px) translateY(${box.top}px) scale(${scale})`
+      });      
+
+      if (this.captionEl) {
+        this.fitCaption(lightbox);
+      }
     }
 
-    // fit the slides object
-    fitObject() {
-      let el = this.objectEl;
-
-      if (!el) return;
-
-      el.removeAttribute('style');
+    fitCaption(lightbox: Lightbox) {
+      let box = lightbox.fitToViewport(this.item, this.captionHeight);
       
-      if (el.tagName == 'IMG' || el.tagName == 'VIDEO') {
-        el.style.height = 'auto';
-        el.style.width = 'auto';
-        el.style.maxWidth = '100%';
-        el.style.maxHeight = '100%';
-        el.width = this.item.width;
-        el.height = this.item.height;
+      this.objectEl.dataset['width'] = box.width.toString();
+      this.objectEl.dataset['height'] = box.height.toString();
+   
+      if (this.captionEl) {
+        this.captionEl.style.top = (box.top + box.height) + 'px';
       }
+    }
 
-      el.style.willChange = null;
-      el.style.userSelect = 'none';
-      el.removeAttribute('data-zoom-src');
-      el.removeAttribute('data-zoom-size');
-      
+    get captionHeight() {
+      if (!this.captionEl) return 0;
+
+      return this.captionEl.clientHeight;
     }
 
     static create(item: LightboxItem) {
@@ -1220,6 +1204,23 @@ carbon-lightbox img {
       slide.item = item;
 
       slide.element.style.setProperty('--index', item.index.toString());
+
+      let mediaContainerEl = document.createElement('div');
+
+      mediaContainerEl.className = 'media-container';
+
+      element.appendChild(mediaContainerEl);
+
+      if (item.caption) {
+        let captionEl = document.createElement('div');
+
+        captionEl.className = 'caption';
+        captionEl.innerHTML = unescape(item.caption);
+  
+        element.appendChild(captionEl);
+
+        slide.captionEl = captionEl;
+      }
 
 
       return slide;
@@ -1232,11 +1233,12 @@ carbon-lightbox img {
     height: number;
     image?: HTMLImageElement;
     index = 0;
+    caption: string;
 
     constructor(sourceElement: HTMLElement) {
       this.sourceElement = sourceElement;
 
-      let { zoomSize} = sourceElement.dataset;
+      let { zoomSize, caption } = sourceElement.dataset;
 
       if (zoomSize) {
         let parts = zoomSize.split('x');
@@ -1244,6 +1246,8 @@ carbon-lightbox img {
         this.width = parseInt(parts[0], 10);
         this.height = parseInt(parts[1], 10);
       }
+
+      this.caption = caption;
 
       let indexEl = this.sourceElement.closest('[data-index]') as HTMLElement;
 
@@ -1354,98 +1358,6 @@ carbon-lightbox img {
     }
   }
 
-  export class Pannable {
-		element: HTMLElement;
-		viewport: Viewport;
-		enabled: boolean;
-
-		position: { x: number, y: number };
-
-		content: ViewportContent;
-		dragging = false;
-
-		panStartListener: any;
-		panMoveListener: any;
-		panEndListener: any;
-		
-		constructor(element: HTMLElement, viewport: Viewport) {
-			if (!element) throw new Error("element is null");
-
-			this.element = element;
-			this.viewport = viewport || new Viewport(<HTMLElement>this.element.closest('.viewport'));
-			
-			this.viewport.content = new ViewportContent(this.element, this.viewport);
-
-			this.content = this.viewport.content;
-
-			// this.viewport.on("pinchstart pinchmove", this.onPinch.bind(this));
-			this.panStartListener = this.viewport.on("panstart", this.onStart.bind(this));
-			this.panMoveListener = this.viewport.on("panmove", this.onDrag.bind(this));
-			this.panEndListener = this.viewport.on("panend", this.onEnd.bind(this));
-		}
-
-		enable() {
-			this.enabled = true;
-		}
-
-		disable() {
-			this.enabled = false;
-		}
-
-		onPinch(ev) {
-			console.log('pinch');
-		}
-
-		center(ev?) {
-			this.viewport.centerAt({ x: 0.5, y: 0.5 });
-
-			this.position = this.content.offset;
-		}
-
-		update() {
-		
-		}
-
-		reset() {
-			this.element.classList.add('animate');
-			this.element.draggable = false;
-
-			this.center();
-			
-			this.update();
-		}
-
-		onStart(ev) {
-			if (!this.enabled) return false;
-
-			this.content.element.style.transition = null;
-			
-			this.position = this.content.offset;
-
-			this.dragging = true;
-			
-			this.element.style.cursor = 'grabbing';
-		}
-
-		onEnd(ev) {
-			setTimeout(() => {
-				this.dragging = false;
-			}, 1);
-
-			this.element.style.cursor = null;
-		}
-
-		onDrag(ev) {
-			if (!this.enabled) return false;
-
-			// console.log('DRAGGING PAN');
-      
-			this.viewport.setOffset({
-				x: this.position.x + ev.deltaX,
-				y: this.position.y + ev.deltaY
-			});
-		}
-  }
 
 
   class Point {
