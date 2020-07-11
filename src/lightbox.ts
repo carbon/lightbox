@@ -300,6 +300,11 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       await this.zoomIn(this.options.zoomInDuration);
       
       this.isSlideshow && this.preloadSlides();
+
+      this.reactive.trigger({
+        type: 'slideCreated',
+        slide: this.slide
+      });
     }
 
     get item() {
@@ -315,7 +320,6 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     get hasNextSlide() {
       return this.slides[this.slide.item.index + 1] !== undefined;
     }
-    
 
     getItem(index: number) {
       if (index < 0) return false;
@@ -746,6 +750,11 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this.slideContainerEl.appendChild(slide.element);
 
       slide.fit(this);
+
+      this.reactive.trigger({
+        type: 'slideCreated',
+        slide: slide
+      });
 
       return slide;
     }
