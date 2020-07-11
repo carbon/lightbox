@@ -96,7 +96,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
 
     easing = 'cubic-bezier(.175,.885,.32,1)';
 
-    didPan = false;
+    lastPan: Date;
     noPan = false;
     animation: any;
     panDirection: number;
@@ -275,13 +275,11 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       
       let cloneEl = this.createClone(item);
 
-      this.slide = Slide.create(item, this); 
+      this.slide = Slide.create(item, cloneEl, this); 
 
       this.slides[this.slide.index] = this.slide;
 
       this.element.style.setProperty('--slide-index', this.slide.index.toString());
-
-      this.slide.setObjectElement(cloneEl);
       
       this.slideContainerEl.appendChild(this.slide.element);
 
@@ -300,11 +298,6 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       await this.zoomIn(this.options.zoomInDuration);
       
       this.isSlideshow && this.preloadSlides();
-
-      this.reactive.trigger({
-        type: 'slideCreated',
-        slide: this.slide
-      });
     }
 
     get item() {
@@ -338,7 +331,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       });
 
       this.noPan = false;
-      this.didPan = true;
+      this.lastPan = new Date();
 
       if (this.isSlideshow) {
         let a = e.deltaX / this.viewport.width;
@@ -356,8 +349,6 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       }
 
       this.cursor && this.cursor.show();
-
-      this.didPan = true;
 
       if (this.panDirection == 4 || this.panDirection == 2) {
         this.resetSlides();
@@ -512,7 +503,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
 
     async onTap(e: any) {      
       if (this.animating && this.state !== 'opening') return;
-
+      
       if (e.target && e.target.closest('.caption')) {
         return false;
       } 
@@ -539,10 +530,13 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
 
       if (e.target, e.target.closest('[on-click]')) return;
       
-      if (this.didPan) {
-        this.didPan = false;
+      if (this.lastPan) {
+        // time since they completed the last pan
+        let d = new Date().getTime() - this.lastPan.getTime();
 
-        return;
+        if (d < 100) {
+          return;
+        }
       }
 
       this.zoomOut();
@@ -736,12 +730,10 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     }
 
     buildSlide(item: LightboxItem) {
-      let slide = Slide.create(item, this); 
-      
       let objectEl = this.createClone(item);
 
-      slide.setObjectElement(objectEl);
-      
+      let slide = Slide.create(item, objectEl, this); 
+            
       if (slide.objectEl.tagName == 'IMG') {
         slide.objectEl.src = item.url;
         slide.objectEl.srcset = item.url + ' 1x';
@@ -750,11 +742,6 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this.slideContainerEl.appendChild(slide.element);
 
       slide.fit(this);
-
-      this.reactive.trigger({
-        type: 'slideCreated',
-        slide: slide
-      });
 
       return slide;
     }
@@ -1109,6 +1096,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
   //   carbon-slide.next
 
   class Slide {
+    lightbox  : Lightbox;
     item      : LightboxItem;
     element   : HTMLElement;
     boxEl     : HTMLElement;
@@ -1118,8 +1106,9 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     x = 0;
     y = 0;
 
-    constructor(element: HTMLElement) {
+    constructor(element: HTMLElement, lightbox: Lightbox) {
       this.element = element;
+      this.lightbox = lightbox;
     }
 
     get mediaContainerEl() {
@@ -1158,9 +1147,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       
       let originBox = this.item.originBox;
 
-      let scale = box.width / originBox.width;  
-
-
+      let scale = box.width / originBox.width;
       
       setStyle(this.objectEl, {
         display          : 'block',
@@ -1195,13 +1182,13 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     get captionHeight() {
       if (!this.captionEl) return 0;
 
-      return this.captionEl.clientHeight;
+      return _outerHeight(this.captionEl);
     }
 
-    static create(item: LightboxItem, lightbox: Lightbox) {
+    static create(item: LightboxItem, objectEl: HTMLElement, lightbox: Lightbox) {
       let element = document.createElement('carbon-slide');
 
-      var slide = new Slide(element);      
+      var slide = new Slide(element, lightbox);      
 
       slide.item = item;
 
@@ -1213,11 +1200,12 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
 
       element.appendChild(mediaContainerEl);
 
+      slide.setObjectElement(objectEl);
       
       let caption: string;
 
       if (lightbox.getCaption) {
-        caption = lightbox.getCaption(item);
+        caption = lightbox.getCaption(slide);
       }
       else if (item.caption) {
         caption = unescape(item.caption);
@@ -1233,9 +1221,16 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
 
         slide.captionEl = captionEl;
       }
-
+    
+      lightbox.reactive.trigger({
+        type: 'slideCreated',
+        slide: this
+      });
+    
       return slide;
     }
+
+  
   }
 
   export class LightboxItem {
@@ -1416,6 +1411,14 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this._reject(value);
     }
   }
+}
+
+function _outerHeight(el: HTMLElement) {
+  var height = el.offsetHeight;
+  var style = getComputedStyle(el);
+
+  height += parseInt(style.marginTop) + parseInt(style.marginBottom);
+  return height;
 }
 
 Carbon.controllers.set('zoom', {
