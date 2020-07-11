@@ -41,8 +41,7 @@ carbon-lightbox carbon-slide .media-container {
   position: absolute;
 }
 
-
-carbon-lightbox carbon-slide .caption {
+carbon-lightbox carbon-slide .caption-wrapper {
   display: block;
   top: 0;
   left: 0;
@@ -61,10 +60,9 @@ carbon-lightbox img {
   -webkit-user-drag: none;
 }
 
-carbon-lightbox.closing carbon-slide .caption {
+carbon-lightbox.closing carbon-slide .caption-wrapper {
   display: none;
 }
-
 
 `;
   
@@ -114,6 +112,8 @@ carbon-lightbox.closing carbon-slide .caption {
 
     // buffer
     slides: Array<Slide> = [];
+
+    getCaption: Function;
 
     constructor(options = null) {
       this.element = this.createElement();
@@ -275,7 +275,7 @@ carbon-lightbox.closing carbon-slide .caption {
       
       let cloneEl = this.createClone(item);
 
-      this.slide = Slide.create(item); 
+      this.slide = Slide.create(item, this); 
 
       this.slides[this.slide.index] = this.slide;
 
@@ -509,11 +509,7 @@ carbon-lightbox.closing carbon-slide .caption {
     async onTap(e: any) {      
       if (this.animating && this.state !== 'opening') return;
 
-      console.log('TAP!', e.target);
       if (e.target && e.target.closest('.caption')) {
-        
-        console.log('caption!');
-
         return false;
       } 
 
@@ -594,8 +590,6 @@ carbon-lightbox.closing carbon-slide .caption {
 
     setBox(element: Size, captionHeight = 0) {
       let originBox = this.item.originBox;
-
-      console.log(element, captionHeight);
 
       this.fittedBox = this.fitToViewport(element, captionHeight);
 
@@ -738,7 +732,7 @@ carbon-lightbox.closing carbon-slide .caption {
     }
 
     buildSlide(item: LightboxItem) {
-      let slide = Slide.create(item); 
+      let slide = Slide.create(item, this); 
       
       let objectEl = this.createClone(item);
 
@@ -748,7 +742,6 @@ carbon-lightbox.closing carbon-slide .caption {
         slide.objectEl.src = item.url;
         slide.objectEl.srcset = item.url + ' 1x';
       }
-
 
       this.slideContainerEl.appendChild(slide.element);
 
@@ -1196,7 +1189,7 @@ carbon-lightbox.closing carbon-slide .caption {
       return this.captionEl.clientHeight;
     }
 
-    static create(item: LightboxItem) {
+    static create(item: LightboxItem, lightbox: Lightbox) {
       let element = document.createElement('carbon-slide');
 
       var slide = new Slide(element);      
@@ -1211,17 +1204,26 @@ carbon-lightbox.closing carbon-slide .caption {
 
       element.appendChild(mediaContainerEl);
 
-      if (item.caption) {
+      
+      let caption: string;
+
+      if (lightbox.getCaption) {
+        caption = lightbox.getCaption(item);
+      }
+      else if (item.caption) {
+        caption = unescape(item.caption);
+      }
+
+      if (caption) {
         let captionEl = document.createElement('div');
 
-        captionEl.className = 'caption';
-        captionEl.innerHTML = unescape(item.caption);
-  
+        captionEl.className = 'caption-wrapper';
+        captionEl.innerHTML = caption;
+
         element.appendChild(captionEl);
 
         slide.captionEl = captionEl;
       }
-
 
       return slide;
     }
