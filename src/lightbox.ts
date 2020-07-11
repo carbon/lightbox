@@ -1224,7 +1224,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     
       lightbox.reactive.trigger({
         type: 'slideCreated',
-        slide: this
+        slide: slide
       });
     
       return slide;
