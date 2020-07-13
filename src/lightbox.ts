@@ -205,6 +205,13 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     async onCursorMove(e: any) {
       if (!this.visible || this.state == 'opening') return;
 
+      if (e.target && e.target.closest('.caption-wrapper')) {
+
+        this.cursor.hide();
+
+        return;
+      }
+
       let distanceFromRight = document.body.clientWidth - e.clientX;
       let distanceFromBottom = document.body.clientHeight - e.clientY;
 
@@ -231,6 +238,8 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
           return;
         }
       }
+
+     
 
       this.cursor.show();
 
@@ -477,6 +486,11 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
         return;
       }      
 
+      if (e.target && e.target.closest('.caption-wrapper')) {
+        return;
+      }
+
+
       if ((this.panDirection == 4 || this.panDirection == 2) && !this.isSlideshow) {
         return;
       }
@@ -504,7 +518,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     async onTap(e: any) {      
       if (this.animating && this.state !== 'opening') return;
       
-      if (e.target && e.target.closest('.caption')) {
+      if (e.target && e.target.closest('.caption-wrapper')) {
         return false;
       } 
 
@@ -841,7 +855,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
 
       this.animation && this.animation.pause();
       
-      await this.animateBackToOrigin(this.options.zoomOutDuration, this.options.zoomOutEasing).finished;
+      await this.animateBackToOrigin(this.options.zoomOutDuration, this.options.zoomOutEasing, options).finished;
 
       this.animating = false;
       this.animation = null;
@@ -849,12 +863,24 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this.onClosed();
     }
 
-    animateBackToOrigin(duration: number, easing = 'easeOutQuad') {
+    animateBackToOrigin(duration: number, easing = 'easeOutQuad', options) {
       let objectEl = this.slide.objectEl;
       
       this.animation && this.animation.pause();
       
-      this.setBox(objectEl.getBoundingClientRect(), this.slide.captionHeight);
+      let offsetY = 0;
+
+      if (options && options.offsetY) {
+        offsetY = options.offsetY;
+      }
+
+
+
+      let top = parseInt(anime.get(objectEl, 'translateY', 'px'));
+
+      top += offsetY;
+
+      console.log(offsetY, top);
 
       this.scrollTop = document.body.scrollTop;
 
@@ -867,7 +893,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
         duration   : duration,
         scale      : originBox.width / objectEl.clientWidth,
         translateX : originBox.left,
-        translateY : originBox.top,
+        translateY : [ top, originBox.top ],
         update: (anim) => { 
           let scrollY = this.scrollTop - document.body.scrollTop;
 
@@ -1163,9 +1189,7 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
         transform        : `translateX(${box.left}px) translateY(${box.top}px) scale(${scale})`
       });      
 
-      if (this.captionEl) {
-        this.fitCaption(lightbox);
-      }
+      this.captionEl && this.fitCaption(lightbox);
     }
 
     fitCaption(lightbox: Lightbox) {
@@ -1229,8 +1253,6 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
     
       return slide;
     }
-
-  
   }
 
   export class LightboxItem {
