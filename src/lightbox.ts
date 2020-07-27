@@ -713,10 +713,14 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this.state = 'opened';
       
       if (otherImg) {
+        // force redraw to fix iPad bug
+        objectEl.style['will-change'] = null;
+        
         otherImg.decoding = 'sync';
         otherImg.src = this.item.url;
         otherImg.srcset = this.item.url + ' 1x';
         otherImg.style.imageRendering = null;
+
       }
       
       deferred.resolve(true);
@@ -887,6 +891,8 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       let originBox = this.item.originBox;
 
       let targets = [ objectEl ];
+
+      objectEl.style['will-change'] = 'transform';
 
       this.animation = anime({
         targets    : targets,
