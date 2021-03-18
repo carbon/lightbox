@@ -713,13 +713,19 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this.state = 'opened';
       
       if (otherImg) {
-        // force redraw to fix iPad bug
-        objectEl.style['will-change'] = null;
         
-        otherImg.decoding = 'sync';
-        otherImg.src = this.item.url;
-        otherImg.srcset = this.item.url + ' 1x';
-        otherImg.style.imageRendering = null;
+        let img = new Image();
+
+        img.src = this.item.url;
+
+        img.decode().then(() => {
+          // force redraw to fix iPad bug
+          objectEl.style['will-change'] = null;
+          
+          otherImg.src = img.src;
+          otherImg.srcset = img.src + ' 1x';
+          otherImg.style.imageRendering = null;
+        });
 
       }
       
