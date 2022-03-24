@@ -705,6 +705,10 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
         ? objectEl
         : objectEl.querySelector('img');
   
+      let otherVideo: HTMLVideoElement = objectEl instanceof HTMLVideoElement
+        ? objectEl
+        : objectEl.querySelector('video');
+
       await this.animation.finished;
 
       this.animating = false;
@@ -713,7 +717,6 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       this.state = 'opened';
       
       if (otherImg) {
-        
         let img = new Image();
 
         img.src = this.item.url;
@@ -726,7 +729,20 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
           otherImg.srcset = img.src + ' 1x';
           otherImg.style.imageRendering = null;
         });
+      }
 
+      else if (otherVideo) {
+        let currentTime = otherVideo.currentTime;
+
+        console.log(otherVideo.currentTime);
+
+        otherVideo.src = this.item.url;
+
+        if (currentTime) {
+          otherVideo.currentTime = otherVideo.currentTime;
+        }
+
+        otherVideo.play();
       }
       
       deferred.resolve(true);
