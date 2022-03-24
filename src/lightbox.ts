@@ -709,6 +709,14 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
         ? objectEl
         : objectEl.querySelector('video');
 
+      let sourceVideo = this.item.sourceElement instanceof HTMLVideoElement
+          ? this.item.sourceElement
+          : this.item.sourceElement.querySelector('video');
+      
+      if (sourceVideo && otherVideo) {
+          otherVideo.currentTime = sourceVideo.currentTime;    
+      }
+
       await this.animation.finished;
 
       this.animating = false;
@@ -732,17 +740,20 @@ carbon-lightbox.closing carbon-slide .caption-wrapper {
       }
 
       else if (otherVideo) {
-        let currentTime = otherVideo.currentTime;
+        let video = otherVideo.cloneNode() as HTMLVideoElement;
 
-        console.log(otherVideo.currentTime);
+        video.src = `${this.item.url}#${sourceVideo.currentTime}`;
+        video.currentTime = sourceVideo.currentTime;
 
-        otherVideo.src = this.item.url;
+        video.play().then(() => {
+          otherVideo.replaceWith(video);
 
-        if (currentTime) {
-          otherVideo.currentTime = otherVideo.currentTime;
-        }
+          video.currentTime = sourceVideo.currentTime;
 
-        otherVideo.play();
+          if (this.slide && this.slide.objectEl instanceof HTMLVideoElement) {
+            this.slide.objectEl = video;
+          }
+        });
       }
       
       deferred.resolve(true);
